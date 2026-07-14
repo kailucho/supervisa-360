@@ -2,3 +2,11 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Generado automáticamente por `supabase gen types`; no editar ni formatear a mano.
+src/types/database.types.ts
+
+# Artefactos temporales de la Supabase CLI (no versionados en la práctica, pero
+# por si aparecen locales).
+supabase/.temp
+supabase/.branches

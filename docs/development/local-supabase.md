@@ -142,7 +142,7 @@ sin pasar por el seed:
 ## 11. Comandos que nunca deben ejecutarse accidentalmente contra producción
 
 Este proyecto está vinculado a un proyecto remoto de Supabase
-(`supabase link`), lo cual hace *más* fácil ejecutar algo contra la nube por
+(`supabase link`), lo cual hace _más_ fácil ejecutar algo contra la nube por
 error. **Nunca ejecutes, salvo instrucción explícita y consciente:**
 
 - `supabase db push` — aplicaría las migraciones locales a la base remota.

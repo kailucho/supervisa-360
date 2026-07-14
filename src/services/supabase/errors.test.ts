@@ -1,0 +1,65 @@
+import { describe, expect, it } from 'vitest';
+import { translateAuthError, translateError } from './errors';
+
+describe('translateError', () => {
+  it('detecta la violación de visita activa única (RN-12) por el nombre del índice', () => {
+    const result = translateError({
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "visits_one_active_per_association"',
+    });
+    expect(result.code).toBe('ACTIVE_VISIT_CONFLICT');
+  });
+
+  it('detecta meta duplicada por el nombre de la restricción', () => {
+    const result = translateError({
+      code: '23505',
+      message:
+        'duplicate key value violates unique constraint "monthly_goals_supervisor_period_unique"',
+    });
+    expect(result.code).toBe('DUPLICATE_GOAL');
+  });
+
+  it('detecta resultado incompleto (visits_result_completeness)', () => {
+    const result = translateError({
+      code: '23514',
+      message:
+        'new row for relation "visits" violates check constraint "visits_result_completeness"',
+    });
+    expect(result.code).toBe('INCOMPLETE_RESULT');
+  });
+
+  it('detecta horas inválidas (visits_hours_order)', () => {
+    const result = translateError({
+      code: '23514',
+      message: 'new row for relation "visits" violates check constraint "visits_hours_order"',
+    });
+    expect(result.code).toBe('INVALID_TIME_RANGE');
+  });
+
+  it('detecta falta de permisos', () => {
+    const result = translateError({ code: '42501', message: 'permission denied for table visits' });
+    expect(result.code).toBe('PERMISSION_DENIED');
+  });
+
+  it('nunca expone el mensaje crudo de Postgres para errores desconocidos', () => {
+    const result = translateError({
+      code: '99999',
+      message: 'ERROR: something internal at line 42',
+    });
+    expect(result.message).not.toContain('ERROR:');
+    expect(result.code).toBe('UNKNOWN');
+  });
+
+  it('devuelve un error genérico ante entradas irreconocibles', () => {
+    const result = translateError('boom');
+    expect(result.code).toBe('UNKNOWN');
+  });
+});
+
+describe('translateAuthError', () => {
+  it('nunca revela si el correo existe o no', () => {
+    const result = translateAuthError();
+    expect(result.code).toBe('INVALID_CREDENTIALS');
+    expect(result.message.toLowerCase()).not.toContain('no existe');
+  });
+});
