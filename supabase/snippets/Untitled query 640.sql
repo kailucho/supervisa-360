@@ -1,1 +1,1 @@
-select * from public.regions order by name;
+select * from public.monthly_goals

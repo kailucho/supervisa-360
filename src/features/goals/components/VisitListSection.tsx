@@ -23,9 +23,12 @@ export function VisitListSection({
 
   return (
     <Paper variant="outlined" sx={{ p: 2, flex: 1, minWidth: 280 }}>
-      <Typography variant="subtitle1" gutterBottom>
-        {title}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <Typography variant="subtitle1" sx={{ flexGrow: 1 }}>
+          {title}
+        </Typography>
+        <Chip size="small" label={visits.length} />
+      </Box>
       {visits.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
           {emptyMessage}
@@ -36,15 +39,17 @@ export function VisitListSection({
             <ListItemButton
               key={visit.id}
               onClick={() => navigate(`/asociaciones/${visit.association_id}`)}
-              sx={{ borderRadius: 1 }}
             >
               <ListItemText
                 primary={visit.association?.name ?? '—'}
-                slotProps={{ secondary: { component: 'div' } }}
+                slotProps={{
+                  primary: { variant: 'body2', sx: { fontWeight: 600 } },
+                  secondary: { component: 'div' },
+                }}
                 secondary={
                   <Box
                     component="span"
-                    sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}
+                    sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}
                   >
                     <span>
                       {formatDateEsPE(visit.scheduled_date)} {formatTime(visit.scheduled_time)}

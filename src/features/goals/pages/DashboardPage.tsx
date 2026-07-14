@@ -60,9 +60,14 @@ export function DashboardPage() {
           mb: 3,
         }}
       >
-        <Typography variant="h5" component="h1">
-          Panel inicial
-        </Typography>
+        <Box>
+          <Typography variant="h5" component="h1">
+            Hola, {profile?.full_name?.split(' ')[0] ?? 'supervisora'} 👋
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Este es tu avance de supervisión
+          </Typography>
+        </Box>
         <MonthNavigator year={year} month={month} onChange={setYearMonth} />
       </Box>
 

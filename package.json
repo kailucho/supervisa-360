@@ -21,6 +21,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.4.0",
+    "@mui/icons-material": "^9.2.0",
     "@mui/material": "^9.2.0",
     "@supabase/supabase-js": "^2.110.3",
     "react": "^19.2.7",
