@@ -195,11 +195,7 @@ export function LoginPage() {
         </Box>
       </Paper>
 
-      <Typography
-        variant="caption"
-        color="text.secondary"
-        sx={{ mt: 4, position: 'relative' }}
-      >
+      <Typography variant="caption" color="text.secondary" sx={{ mt: 4, position: 'relative' }}>
         Supervisa 360 © {new Date().getFullYear()}
       </Typography>
     </Box>

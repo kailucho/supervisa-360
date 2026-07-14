@@ -49,7 +49,13 @@ export function VisitListSection({
                 secondary={
                   <Box
                     component="span"
-                    sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap', mt: 0.5 }}
+                    sx={{
+                      display: 'flex',
+                      gap: 1,
+                      alignItems: 'center',
+                      flexWrap: 'wrap',
+                      mt: 0.5,
+                    }}
                   >
                     <span>
                       {formatDateEsPE(visit.scheduled_date)} {formatTime(visit.scheduled_time)}

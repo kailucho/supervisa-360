@@ -144,7 +144,11 @@ export function AppLayout() {
           variant="permanent"
           sx={{
             display: { xs: 'none', md: 'block' },
-            '& .MuiDrawer-paper': { width: DRAWER_WIDTH, borderRight: '1px solid', borderColor: 'divider' },
+            '& .MuiDrawer-paper': {
+              width: DRAWER_WIDTH,
+              borderRight: '1px solid',
+              borderColor: 'divider',
+            },
           }}
           open
         >
