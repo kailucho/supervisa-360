@@ -100,7 +100,7 @@ export function VisitResultDialog({
             helperText={errors.performedDate?.message}
             fullWidth
           />
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
             <TextField
               {...register('startTime')}
               label="Hora de inicio (opcional)"

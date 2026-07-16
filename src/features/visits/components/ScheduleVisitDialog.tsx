@@ -224,7 +224,7 @@ export function ScheduleVisitDialog({
             <Typography variant="body2" color="text.secondary">
               Asociación: <strong>{association.name}</strong>
             </Typography>
-            <Box sx={{ display: 'flex', gap: 2 }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
               <TextField
                 {...register('scheduledDate')}
                 label="Fecha programada"

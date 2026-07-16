@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Snackbar from '@mui/material/Snackbar';
@@ -13,6 +15,8 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import { fetchAssociationById, updateAssociation } from '@/services/supabase/associations';
 import { fetchVisitHistory } from '@/services/supabase/visits';
 import { fetchAdvisors } from '@/services/supabase/advisors';
@@ -40,6 +44,8 @@ export function AssociationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const {
     data: association,
@@ -100,8 +106,16 @@ export function AssociationDetailPage() {
         ← Volver al listado
       </Button>
 
-      <Paper variant="outlined" sx={{ p: 3, mb: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+      <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 2,
+          }}
+        >
           <Box>
             <Typography variant="h5" component="h1">
               {association.name}
@@ -132,12 +146,25 @@ export function AssociationDetailPage() {
           </Box>
         </Box>
 
-        <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-          <Button variant="outlined" onClick={() => setEditOpen(true)}>
+        <Box
+          sx={{
+            mt: 3,
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            gap: 2,
+            flexWrap: 'wrap',
+          }}
+        >
+          <Button
+            variant="outlined"
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
+            onClick={() => setEditOpen(true)}
+          >
             Editar estado / asesor
           </Button>
           <Button
             variant="contained"
+            sx={{ width: { xs: '100%', sm: 'auto' } }}
             disabled={!supervisable}
             onClick={() => setScheduleOpen(true)}
             title={
@@ -168,52 +195,104 @@ export function AssociationDetailPage() {
       ) : null}
 
       {!loadingHistory && !historyError && history && history.length > 0 ? (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Programada</TableCell>
-                <TableCell>Realizada</TableCell>
-                <TableCell>Tipo</TableCell>
-                <TableCell>Modalidad</TableCell>
-                <TableCell>Característica</TableCell>
-                <TableCell>Supervisora</TableCell>
-                <TableCell>Asesor (en ese momento)</TableCell>
-                <TableCell>Estado</TableCell>
-                <TableCell>Puntuación</TableCell>
-                <TableCell>Comentario</TableCell>
-                <TableCell align="right">Acciones</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {history.map((visit) => (
-                <TableRow key={visit.id}>
-                  <TableCell>{formatDateEsPE(visit.scheduled_date)}</TableCell>
-                  <TableCell>{formatDateEsPE(visit.performed_date)}</TableCell>
-                  <TableCell>{VISIT_TYPE_LABELS[visit.visit_type]}</TableCell>
-                  <TableCell>{VISIT_MODALITY_LABELS[visit.modality]}</TableCell>
-                  <TableCell>{VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}</TableCell>
-                  <TableCell>{visit.supervisor?.full_name ?? '—'}</TableCell>
-                  <TableCell>{visit.scheduled_advisor?.full_name ?? '—'}</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={VISIT_STATUS_LABELS[visit.status]}
-                      color={VISIT_STATUS_COLORS[visit.status]}
-                    />
-                  </TableCell>
-                  <TableCell>{visit.score ?? '—'}</TableCell>
-                  <TableCell sx={{ maxWidth: 240, whiteSpace: 'normal' }}>
-                    {visit.general_comment ?? '—'}
-                  </TableCell>
-                  <TableCell align="right">
+        isMobile ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {history.map((visit) => (
+              <Card key={visit.id} variant="outlined">
+                <CardContent>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle1">
+                        {formatDateEsPE(visit.scheduled_date)}
+                        {visit.performed_date
+                          ? ` → realizada ${formatDateEsPE(visit.performed_date)}`
+                          : ''}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {VISIT_TYPE_LABELS[visit.visit_type]} ·{' '}
+                        {VISIT_MODALITY_LABELS[visit.modality]} ·{' '}
+                        {VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        Supervisora: {visit.supervisor?.full_name ?? '—'} · Asesor:{' '}
+                        {visit.scheduled_advisor?.full_name ?? '—'}
+                      </Typography>
+                      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Chip
+                          size="small"
+                          label={VISIT_STATUS_LABELS[visit.status]}
+                          color={VISIT_STATUS_COLORS[visit.status]}
+                        />
+                        {visit.score != null ? (
+                          <Typography variant="body2">Puntuación: {visit.score}</Typography>
+                        ) : null}
+                      </Box>
+                      {visit.general_comment ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          {visit.general_comment}
+                        </Typography>
+                      ) : null}
+                    </Box>
                     <VisitActionsMenu visit={visit} onChanged={handleReload} />
-                  </TableCell>
+                  </Box>
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Programada</TableCell>
+                  <TableCell>Realizada</TableCell>
+                  <TableCell>Tipo</TableCell>
+                  <TableCell>Modalidad</TableCell>
+                  <TableCell>Característica</TableCell>
+                  <TableCell>Supervisora</TableCell>
+                  <TableCell>Asesor (en ese momento)</TableCell>
+                  <TableCell>Estado</TableCell>
+                  <TableCell>Puntuación</TableCell>
+                  <TableCell>Comentario</TableCell>
+                  <TableCell align="right">Acciones</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {history.map((visit) => (
+                  <TableRow key={visit.id}>
+                    <TableCell>{formatDateEsPE(visit.scheduled_date)}</TableCell>
+                    <TableCell>{formatDateEsPE(visit.performed_date)}</TableCell>
+                    <TableCell>{VISIT_TYPE_LABELS[visit.visit_type]}</TableCell>
+                    <TableCell>{VISIT_MODALITY_LABELS[visit.modality]}</TableCell>
+                    <TableCell>{VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}</TableCell>
+                    <TableCell>{visit.supervisor?.full_name ?? '—'}</TableCell>
+                    <TableCell>{visit.scheduled_advisor?.full_name ?? '—'}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={VISIT_STATUS_LABELS[visit.status]}
+                        color={VISIT_STATUS_COLORS[visit.status]}
+                      />
+                    </TableCell>
+                    <TableCell>{visit.score ?? '—'}</TableCell>
+                    <TableCell sx={{ maxWidth: 240, whiteSpace: 'normal' }}>
+                      {visit.general_comment ?? '—'}
+                    </TableCell>
+                    <TableCell align="right">
+                      <VisitActionsMenu visit={visit} onChanged={handleReload} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )
       ) : null}
 
       {editOpen ? (

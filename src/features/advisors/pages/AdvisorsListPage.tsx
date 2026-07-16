@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
 import Skeleton from '@mui/material/Skeleton';
@@ -11,12 +13,17 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import TextField from '@mui/material/TextField';
 import Typography from '@mui/material/Typography';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { useTheme } from '@mui/material/styles';
 import { fetchAdvisors } from '@/services/supabase/advisors';
 import { useAsyncData } from '@/shared/hooks/useAsyncData';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { ErrorState } from '@/shared/components/ErrorState';
 
 export function AdvisorsListPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
   const [search, setSearch] = useState('');
   const { data: advisors, loading, error, reload } = useAsyncData(fetchAdvisors, []);
 
@@ -74,32 +81,53 @@ export function AdvisorsListPage() {
       ) : null}
 
       {!loading && !error && filtered.length > 0 ? (
-        <TableContainer component={Paper} variant="outlined">
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Código</TableCell>
-                <TableCell>Nombre</TableCell>
-                <TableCell>Estado</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filtered.map((advisor) => (
-                <TableRow key={advisor.id} hover>
-                  <TableCell>{advisor.code}</TableCell>
-                  <TableCell>{advisor.full_name}</TableCell>
-                  <TableCell>
-                    <Chip
-                      size="small"
-                      label={advisor.is_active ? 'Activo' : 'Inactivo'}
-                      color={advisor.is_active ? 'success' : 'default'}
-                    />
-                  </TableCell>
+        isMobile ? (
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {filtered.map((advisor) => (
+              <Card key={advisor.id} variant="outlined">
+                <CardContent>
+                  <Typography variant="subtitle1">{advisor.full_name}</Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    Código {advisor.code}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    sx={{ mt: 1 }}
+                    label={advisor.is_active ? 'Activo' : 'Inactivo'}
+                    color={advisor.is_active ? 'success' : 'default'}
+                  />
+                </CardContent>
+              </Card>
+            ))}
+          </Box>
+        ) : (
+          <TableContainer component={Paper} variant="outlined">
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Código</TableCell>
+                  <TableCell>Nombre</TableCell>
+                  <TableCell>Estado</TableCell>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+              </TableHead>
+              <TableBody>
+                {filtered.map((advisor) => (
+                  <TableRow key={advisor.id} hover>
+                    <TableCell>{advisor.code}</TableCell>
+                    <TableCell>{advisor.full_name}</TableCell>
+                    <TableCell>
+                      <Chip
+                        size="small"
+                        label={advisor.is_active ? 'Activo' : 'Inactivo'}
+                        color={advisor.is_active ? 'success' : 'default'}
+                      />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )
       ) : null}
     </Box>
   );
