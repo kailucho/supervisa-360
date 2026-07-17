@@ -157,6 +157,129 @@ export type Database = {
           },
         ]
       }
+      monthly_plan_advisor_assignments: {
+        Row: {
+          advisor_id: string
+          id: string
+          month: number
+          monthly_plan_id: string
+          region_id: string
+          removed_at: string | null
+          removed_by: string | null
+          selected_at: string
+          selected_by: string
+          year: number
+        }
+        Insert: {
+          advisor_id: string
+          id?: string
+          month: number
+          monthly_plan_id: string
+          region_id: string
+          removed_at?: string | null
+          removed_by?: string | null
+          selected_at?: string
+          selected_by: string
+          year: number
+        }
+        Update: {
+          advisor_id?: string
+          id?: string
+          month?: number
+          monthly_plan_id?: string
+          region_id?: string
+          removed_at?: string | null
+          removed_by?: string | null
+          selected_at?: string
+          selected_by?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_plan_advisor_assignments_advisor_id_fkey"
+            columns: ["advisor_id"]
+            isOneToOne: false
+            referencedRelation: "advisors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_plan_advisor_assignments_monthly_plan_id_fkey"
+            columns: ["monthly_plan_id"]
+            isOneToOne: false
+            referencedRelation: "monthly_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_plan_advisor_assignments_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_plan_advisor_assignments_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_plan_advisor_assignments_selected_by_fkey"
+            columns: ["selected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      monthly_plans: {
+        Row: {
+          configured_at: string | null
+          created_at: string
+          id: string
+          month: number
+          region_id: string
+          supervisor_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          configured_at?: string | null
+          created_at?: string
+          id?: string
+          month: number
+          region_id: string
+          supervisor_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          configured_at?: string | null
+          created_at?: string
+          id?: string
+          month?: number
+          region_id?: string
+          supervisor_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_plans_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "monthly_plans_supervisor_id_fkey"
+            columns: ["supervisor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -268,6 +391,105 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      visit_document_feedback: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string
+          original_name: string
+          size_bytes: number
+          storage_path: string
+          updated_at: string
+          uploaded_by: string
+          visit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type: string
+          original_name: string
+          size_bytes: number
+          storage_path: string
+          updated_at?: string
+          uploaded_by?: string
+          visit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          original_name?: string
+          size_bytes?: number
+          storage_path?: string
+          updated_at?: string
+          uploaded_by?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_document_feedback_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_document_feedback_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: true
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      visit_photos: {
+        Row: {
+          created_at: string
+          id: string
+          mime_type: string
+          original_name: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by: string
+          visit_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mime_type: string
+          original_name: string
+          size_bytes: number
+          storage_path: string
+          uploaded_by?: string
+          visit_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mime_type?: string
+          original_name?: string
+          size_bytes?: number
+          storage_path?: string
+          uploaded_by?: string
+          visit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "visit_photos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "visit_photos_visit_id_fkey"
+            columns: ["visit_id"]
+            isOneToOne: false
+            referencedRelation: "visits"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       visits: {
         Row: {
@@ -398,9 +620,31 @@ export type Database = {
       }
     }
     Functions: {
+      add_advisor_to_monthly_plan: {
+        Args: {
+          p_advisor_id: string
+          p_month: number
+          p_region_id: string
+          p_year: number
+        }
+        Returns: string
+      }
+      can_manage_visit_evidence: {
+        Args: { p_object_name: string }
+        Returns: boolean
+      }
       current_app_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      save_monthly_plan: {
+        Args: {
+          p_advisor_ids: string[]
+          p_month: number
+          p_region_id: string
+          p_year: number
+        }
+        Returns: string
       }
     }
     Enums: {

@@ -101,6 +101,82 @@ export async function fetchRescheduledVisits(limit = 10): Promise<VisitWithRelat
   return (data ?? []) as unknown as VisitWithRelations[];
 }
 
+/** Visitas activas (PROGRAMADA/REPROGRAMADA) de todas las asociaciones de una sede. */
+export async function fetchActiveVisitsByRegion(regionId: string): Promise<VisitRow[]> {
+  const { data, error } = await supabase
+    .from('visits')
+    .select('*, association:associations!inner(region_id)')
+    .in('status', ['PROGRAMADA', 'REPROGRAMADA'])
+    .eq('association.region_id', regionId);
+  if (error) throw error;
+  return (data ?? []) as unknown as VisitRow[];
+}
+
+export type RealizedVisitSummary = Pick<
+  VisitRow,
+  'id' | 'association_id' | 'performed_date' | 'score'
+>;
+
+/**
+ * Resumen de TODAS las visitas realizadas de una sede (fecha y puntuación),
+ * ordenadas de la más reciente a la más antigua. Alimenta la evolución y el
+ * orden por prioridad del listado de asociaciones.
+ */
+export async function fetchRealizedVisitSummariesByRegion(
+  regionId: string,
+): Promise<RealizedVisitSummary[]> {
+  const { data, error } = await supabase
+    .from('visits')
+    .select('id, association_id, performed_date, score, association:associations!inner(region_id)')
+    .eq('status', 'REALIZADA')
+    .eq('association.region_id', regionId)
+    .order('performed_date', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as unknown as RealizedVisitSummary[];
+}
+
+export type RecentRealizedVisit = VisitWithRelations & {
+  photoCount: number;
+  hasDocument: boolean;
+};
+
+export interface RecentRealizedVisitsFilters {
+  /** Limita a las visitas realizadas por una supervisora (vista de supervisora). */
+  supervisorId?: string;
+  limit?: number;
+}
+
+/**
+ * Últimas visitas REALIZADAS (una asociación puede repetirse), con cantidad de
+ * fotografías y si existe documento de retroalimentación. Orden: fecha
+ * realizada descendente.
+ */
+export async function fetchRecentRealizedVisits(
+  filters: RecentRealizedVisitsFilters = {},
+): Promise<RecentRealizedVisit[]> {
+  let query = supabase
+    .from('visits')
+    .select(`${FULL_EMBED}, visit_photos(count), visit_document_feedback(id)`)
+    .eq('status', 'REALIZADA')
+    .order('performed_date', { ascending: false })
+    .order('result_updated_at', { ascending: false, nullsFirst: false })
+    .limit(filters.limit ?? 10);
+  if (filters.supervisorId) query = query.eq('supervisor_id', filters.supervisorId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  type EmbeddedCounts = {
+    visit_photos: { count: number }[] | null;
+    visit_document_feedback: { id: string } | null;
+  };
+  return ((data ?? []) as unknown as (VisitWithRelations & EmbeddedCounts)[]).map((row) => ({
+    ...row,
+    photoCount: row.visit_photos?.[0]?.count ?? 0,
+    hasDocument: Boolean(row.visit_document_feedback),
+  }));
+}
+
 export async function fetchActiveVisitForAssociation(
   associationId: string,
 ): Promise<VisitWithRelations | null> {

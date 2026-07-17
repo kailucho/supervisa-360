@@ -6,6 +6,9 @@ export type AppErrorCode =
   | 'INCOMPLETE_RESULT'
   | 'INVALID_TIME_RANGE'
   | 'DUPLICATE_GOAL'
+  | 'ADVISOR_TAKEN'
+  | 'PHOTO_LIMIT_REACHED'
+  | 'EVIDENCE_VISIT_NOT_DONE'
   | 'PERMISSION_DENIED'
   | 'NETWORK_ERROR'
   | 'UNKNOWN';
@@ -76,6 +79,12 @@ export function translateError(error: unknown): AppError {
           message: 'Ya existe una meta conjunta para esa sede en ese mes y año.',
         };
       }
+      if (haystack.includes('monthly_plan_assignments_active_unique')) {
+        return {
+          code: 'ADVISOR_TAKEN',
+          message: 'Ese asesor ya está asignado a otra supervisora en esta sede y periodo.',
+        };
+      }
       return { code: 'UNKNOWN', message: 'Ese valor ya existe y debe ser único.' };
 
     case '23514': // check_violation
@@ -100,7 +109,26 @@ export function translateError(error: unknown): AppError {
       }
       return { code: 'UNKNOWN', message: GENERIC_MESSAGE };
 
-    case 'P0001': // raise_exception (triggers)
+    case 'P0001': // raise_exception (triggers y RPCs)
+      if (haystack.includes('advisor_taken')) {
+        return {
+          code: 'ADVISOR_TAKEN',
+          // El mensaje de la RPC ya viene en español y nombra a la supervisora.
+          message: message.replace(/^ADVISOR_TAKEN:\s*/i, ''),
+        };
+      }
+      if (haystack.includes('photo_limit_reached')) {
+        return {
+          code: 'PHOTO_LIMIT_REACHED',
+          message: 'Esta visita ya tiene el máximo de 10 fotografías.',
+        };
+      }
+      if (haystack.includes('evidence_visit_not_done')) {
+        return {
+          code: 'EVIDENCE_VISIT_NOT_DONE',
+          message: 'Solo se pueden adjuntar evidencias a una visita realizada.',
+        };
+      }
       if (haystack.includes('no se puede programar') || haystack.includes('estado')) {
         return {
           code: 'ASSOCIATION_NOT_SUPERVISABLE',

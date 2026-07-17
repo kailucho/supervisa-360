@@ -12,10 +12,11 @@ describe('getNavItems (menú según rol)', () => {
     expect(items[0]).toMatchObject({ label: 'Inicio', to: '/jefatura' });
   });
 
-  it('ambos roles comparten Agenda, Asociaciones, Asesores y Metas (sin auditoría)', () => {
+  it('ambos roles comparten Agenda, Asociaciones y Metas (Asesores retirado del menú)', () => {
     for (const role of ['SUPERVISOR', 'SUPERVISION_MANAGER'] as const) {
       const labels = getNavItems(role).map((item) => item.label);
-      expect(labels).toEqual(['Inicio', 'Agenda', 'Asociaciones', 'Asesores', 'Metas']);
+      expect(labels).toEqual(['Inicio', 'Agenda', 'Asociaciones', 'Metas']);
+      expect(labels).not.toContain('Asesores');
     }
   });
 });

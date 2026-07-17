@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { Suspense, lazy, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import Accordion from '@mui/material/Accordion';
+import AccordionDetails from '@mui/material/AccordionDetails';
+import AccordionSummary from '@mui/material/AccordionSummary';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -7,16 +10,10 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Chip from '@mui/material/Chip';
 import Paper from '@mui/material/Paper';
+import Skeleton from '@mui/material/Skeleton';
 import Snackbar from '@mui/material/Snackbar';
-import Table from '@mui/material/Table';
-import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
-import TableHead from '@mui/material/TableHead';
-import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import useMediaQuery from '@mui/material/useMediaQuery';
-import { useTheme } from '@mui/material/styles';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { fetchAssociationById, updateAssociation } from '@/services/supabase/associations';
 import { fetchVisitHistory } from '@/services/supabase/visits';
 import { fetchAdvisors } from '@/services/supabase/advisors';
@@ -40,13 +37,20 @@ import { formatDateEsPE } from '@/shared/utils/date';
 import { EditAssociationDialog } from '@/features/associations/components/EditAssociationDialog';
 import { ScheduleVisitDialog } from '@/features/visits/components/ScheduleVisitDialog';
 import { VisitActionsMenu } from '@/features/visits/components/VisitActionsMenu';
+import { VisitEvidenceSection } from '@/features/visits/components/VisitEvidenceSection';
+
+// Recharts solo se usa en este gráfico: se carga de forma diferida para que no
+// entre en el bundle inicial (login, dashboard, listado no lo necesitan).
+const AssociationEvolutionChart = lazy(() =>
+  import('@/features/associations/components/AssociationEvolutionChart').then((module) => ({
+    default: module.AssociationEvolutionChart,
+  })),
+);
 
 export function AssociationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const {
     data: association,
@@ -193,6 +197,17 @@ export function AssociationDetailPage() {
         ) : null}
       </Paper>
 
+      <Suspense
+        fallback={
+          <Paper variant="outlined" sx={{ p: { xs: 2, sm: 3 }, mb: 3 }}>
+            <Skeleton variant="text" width={220} height={32} />
+            <Skeleton variant="rectangular" height={220} sx={{ mt: 1, borderRadius: 1 }} />
+          </Paper>
+        }
+      >
+        <AssociationEvolutionChart history={history ?? []} />
+      </Suspense>
+
       <Typography variant="h6" gutterBottom>
         Historial de visitas
       </Typography>
@@ -204,108 +219,75 @@ export function AssociationDetailPage() {
       ) : null}
 
       {!loadingHistory && !historyError && history && history.length > 0 ? (
-        isMobile ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {history.map((visit) => (
-              <Card key={visit.id} variant="outlined">
-                <CardContent>
-                  <Box
-                    sx={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <Box>
-                      <Typography variant="subtitle1">
-                        {formatDateEsPE(visit.scheduled_date)}
-                        {visit.performed_date
-                          ? ` → realizada ${formatDateEsPE(visit.performed_date)}`
-                          : ''}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        {VISIT_TYPE_LABELS[visit.visit_type]} ·{' '}
-                        {VISIT_MODALITY_LABELS[visit.modality]} ·{' '}
-                        {VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary">
-                        Supervisora: {visit.supervisor?.full_name ?? '—'} · Asesor:{' '}
-                        {visit.scheduled_advisor?.full_name ?? '—'}
-                      </Typography>
-                      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip
-                          size="small"
-                          label={VISIT_STATUS_LABELS[visit.status]}
-                          color={VISIT_STATUS_COLORS[visit.status]}
-                        />
-                        {visit.score != null ? (
-                          <Typography variant="body2">Puntuación: {visit.score}</Typography>
-                        ) : null}
-                      </Box>
-                      {visit.general_comment ? (
-                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                          {visit.general_comment}
-                        </Typography>
-                      ) : null}
-                    </Box>
-                    {canOperateVisits ? (
-                      <VisitActionsMenu visit={visit} onChanged={handleReload} />
-                    ) : null}
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Box>
-        ) : (
-          <TableContainer component={Paper} variant="outlined">
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Programada</TableCell>
-                  <TableCell>Realizada</TableCell>
-                  <TableCell>Tipo</TableCell>
-                  <TableCell>Modalidad</TableCell>
-                  <TableCell>Característica</TableCell>
-                  <TableCell>Supervisora</TableCell>
-                  <TableCell>Asesor (en ese momento)</TableCell>
-                  <TableCell>Estado</TableCell>
-                  <TableCell>Puntuación</TableCell>
-                  <TableCell>Comentario</TableCell>
-                  {canOperateVisits ? <TableCell align="right">Acciones</TableCell> : null}
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {history.map((visit) => (
-                  <TableRow key={visit.id}>
-                    <TableCell>{formatDateEsPE(visit.scheduled_date)}</TableCell>
-                    <TableCell>{formatDateEsPE(visit.performed_date)}</TableCell>
-                    <TableCell>{VISIT_TYPE_LABELS[visit.visit_type]}</TableCell>
-                    <TableCell>{VISIT_MODALITY_LABELS[visit.modality]}</TableCell>
-                    <TableCell>{VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}</TableCell>
-                    <TableCell>{visit.supervisor?.full_name ?? '—'}</TableCell>
-                    <TableCell>{visit.scheduled_advisor?.full_name ?? '—'}</TableCell>
-                    <TableCell>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          {history.map((visit) => (
+            <Card key={visit.id} variant="outlined" id={`visita-${visit.id}`}>
+              <CardContent>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                    gap: 1,
+                  }}
+                >
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="subtitle1">
+                      {formatDateEsPE(visit.scheduled_date)}
+                      {visit.performed_date
+                        ? ` → realizada ${formatDateEsPE(visit.performed_date)}`
+                        : ''}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {VISIT_TYPE_LABELS[visit.visit_type]} ·{' '}
+                      {VISIT_MODALITY_LABELS[visit.modality]} ·{' '}
+                      {VISIT_CHARACTERISTIC_LABELS[visit.characteristic]}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Supervisora: {visit.supervisor?.full_name ?? '—'} · Asesor:{' '}
+                      {visit.scheduled_advisor?.full_name ?? '—'}
+                    </Typography>
+                    <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Chip
                         size="small"
                         label={VISIT_STATUS_LABELS[visit.status]}
                         color={VISIT_STATUS_COLORS[visit.status]}
                       />
-                    </TableCell>
-                    <TableCell>{visit.score ?? '—'}</TableCell>
-                    <TableCell sx={{ maxWidth: 240, whiteSpace: 'normal' }}>
-                      {visit.general_comment ?? '—'}
-                    </TableCell>
-                    {canOperateVisits ? (
-                      <TableCell align="right">
-                        <VisitActionsMenu visit={visit} onChanged={handleReload} />
-                      </TableCell>
+                      {visit.score != null ? (
+                        <Typography variant="body2">Puntuación: {visit.score}</Typography>
+                      ) : null}
+                    </Box>
+                    {visit.general_comment ? (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {visit.general_comment}
+                      </Typography>
                     ) : null}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )
+                  </Box>
+                  {canOperateVisits ? (
+                    <VisitActionsMenu visit={visit} onChanged={handleReload} />
+                  ) : null}
+                </Box>
+              </CardContent>
+              {visit.status === 'REALIZADA' ? (
+                <Accordion
+                  disableGutters
+                  elevation={0}
+                  slotProps={{ transition: { unmountOnExit: true } }}
+                  sx={{ '&::before': { display: 'none' }, borderTop: 1, borderColor: 'divider' }}
+                >
+                  <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>
+                    <Typography variant="body2">
+                      Evidencias (fotografías y documento de retroalimentación)
+                    </Typography>
+                  </AccordionSummary>
+                  <AccordionDetails>
+                    <VisitEvidenceSection visit={visit} />
+                  </AccordionDetails>
+                </Accordion>
+              ) : null}
+            </Card>
+          ))}
+        </Box>
       ) : null}
 
       {editOpen ? (

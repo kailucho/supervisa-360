@@ -4,6 +4,7 @@ import Typography from '@mui/material/Typography';
 import { fetchIndividualProgress, fetchJointProgress } from '@/services/supabase/goals';
 import {
   fetchOverdueActiveVisits,
+  fetchRecentRealizedVisits,
   fetchRescheduledVisits,
   fetchUpcomingVisits,
 } from '@/services/supabase/visits';
@@ -15,6 +16,7 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { getLimaNowYearMonth } from '@/shared/utils/date';
 import { sumIndividualProgress, sumJointProgress } from '@/features/goals/progressMath';
 import { ProgressCard } from '@/features/goals/components/ProgressCard';
+import { RecentVisitsSection } from '@/features/goals/components/RecentVisitsSection';
 import { VisitListSection } from '@/features/goals/components/VisitListSection';
 
 export function DashboardPage() {
@@ -47,6 +49,11 @@ export function DashboardPage() {
   const { data: rescheduled, loading: loadingRescheduled } = useAsyncData(
     () => fetchRescheduledVisits(10),
     [],
+  );
+  // Solo visitas realizadas por esta supervisora (una asociación puede repetirse).
+  const { data: recentRealized, loading: loadingRecent } = useAsyncData(
+    () => fetchRecentRealizedVisits({ supervisorId: profile!.id, limit: 10 }),
+    [profile?.id],
   );
 
   const individualSummary = useMemo(
@@ -109,6 +116,14 @@ export function DashboardPage() {
           title="Reprogramadas"
           visits={loadingRescheduled ? [] : (rescheduled ?? [])}
           emptyMessage="No hay visitas reprogramadas."
+        />
+      </Box>
+
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 2 }}>
+        <RecentVisitsSection
+          title="Últimas visitas realizadas"
+          visits={loadingRecent ? [] : (recentRealized ?? [])}
+          emptyMessage="Todavía no has registrado visitas realizadas."
         />
       </Box>
     </Box>

@@ -9,6 +9,10 @@ export type AssociationRow = Tables['associations']['Row'];
 export type VisitRow = Tables['visits']['Row'];
 export type MonthlyGoalRow = Tables['monthly_goals']['Row'];
 export type RegionalMonthlyGoalRow = Tables['regional_monthly_goals']['Row'];
+export type MonthlyPlanRow = Tables['monthly_plans']['Row'];
+export type MonthlyPlanAssignmentRow = Tables['monthly_plan_advisor_assignments']['Row'];
+export type VisitPhotoRow = Tables['visit_photos']['Row'];
+export type VisitDocumentFeedbackRow = Tables['visit_document_feedback']['Row'];
 export type IndividualProgressRow =
   Database['public']['Views']['v_individual_monthly_progress']['Row'];
 export type JointProgressRow = Database['public']['Views']['v_joint_monthly_progress']['Row'];

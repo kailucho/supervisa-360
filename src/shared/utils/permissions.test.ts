@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   canManageAssociations,
+  canManageMonthlyPlan,
   canManagePersonalGoals,
   canManageRegionalGoals,
+  canManageVisitEvidence,
   canManageVisits,
   homePathForRole,
   isSupervisionManager,
   isSupervisor,
 } from './permissions';
-import type { ProfileRow } from '@/shared/types/domain';
+import type { ProfileRow, VisitStatus } from '@/shared/types/domain';
 
 function profile(overrides: Partial<ProfileRow> = {}): ProfileRow {
   return {
@@ -61,6 +63,44 @@ describe('permisos operativos', () => {
     expect(canManageRegionalGoals(manager)).toBe(true);
     expect(canManageRegionalGoals(supervisor)).toBe(false);
     expect(canManageRegionalGoals(null)).toBe(false);
+  });
+});
+
+describe('canManageVisitEvidence (fotografías y documento)', () => {
+  const visit = (supervisorId: string, status: VisitStatus) => ({
+    supervisor_id: supervisorId,
+    status,
+  });
+
+  it('la supervisora que realizó la visita puede gestionar evidencias', () => {
+    expect(canManageVisitEvidence(supervisor, visit('user-1', 'REALIZADA'))).toBe(true);
+  });
+
+  it('otra supervisora no puede gestionar evidencias de una visita ajena', () => {
+    expect(canManageVisitEvidence(supervisor, visit('otra-supervisora', 'REALIZADA'))).toBe(false);
+  });
+
+  it('la jefatura solo visualiza: nunca sube, reemplaza ni elimina', () => {
+    expect(canManageVisitEvidence(manager, visit(manager.id, 'REALIZADA'))).toBe(false);
+  });
+
+  it('solo se permiten evidencias en visitas REALIZADAS', () => {
+    expect(canManageVisitEvidence(supervisor, visit('user-1', 'PROGRAMADA'))).toBe(false);
+    expect(canManageVisitEvidence(supervisor, visit('user-1', 'CANCELADA'))).toBe(false);
+  });
+
+  it('un perfil inactivo o null no gestiona evidencias', () => {
+    expect(canManageVisitEvidence(inactiveSupervisor, visit('user-1', 'REALIZADA'))).toBe(false);
+    expect(canManageVisitEvidence(null, visit('user-1', 'REALIZADA'))).toBe(false);
+  });
+});
+
+describe('canManageMonthlyPlan (planificación mensual)', () => {
+  it('solo la supervisora activa gestiona su planificación; la jefatura consulta', () => {
+    expect(canManageMonthlyPlan(supervisor)).toBe(true);
+    expect(canManageMonthlyPlan(manager)).toBe(false);
+    expect(canManageMonthlyPlan(inactiveSupervisor)).toBe(false);
+    expect(canManageMonthlyPlan(null)).toBe(false);
   });
 });
 

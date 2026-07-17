@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import { fetchIndividualProgress, fetchJointProgress } from '@/services/supabase/goals';
+import { fetchRecentRealizedVisits } from '@/services/supabase/visits';
 import { fetchRegions } from '@/services/supabase/regions';
+import { RecentVisitsSection } from '@/features/goals/components/RecentVisitsSection';
 import { useAsyncData } from '@/shared/hooks/useAsyncData';
 import { useAuth } from '@/features/auth/useAuth';
 import { MonthNavigator } from '@/shared/components/MonthNavigator';
@@ -33,6 +35,24 @@ export function ManagerDashboardPage() {
     error: individualError,
     reload: reloadIndividual,
   } = useAsyncData(() => fetchIndividualProgress(year, month), [year, month]);
+
+  // Últimas visitas realizadas de todas las supervisoras, agrupadas por sede.
+  const { data: recentVisits, loading: loadingRecent } = useAsyncData(
+    () => fetchRecentRealizedVisits({ limit: 10 }),
+    [],
+  );
+
+  const recentByRegion = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof recentVisits>>();
+    for (const visit of recentVisits ?? []) {
+      const regionId = visit.association?.region_id;
+      if (!regionId) continue;
+      const list = map.get(regionId) ?? [];
+      list.push(visit);
+      map.set(regionId, list);
+    }
+    return map;
+  }, [recentVisits]);
 
   const individualByRegion = useMemo(() => {
     const map = new Map<string, NonNullable<typeof individualRows>>();
@@ -100,6 +120,25 @@ export function ManagerDashboardPage() {
               }
             />
           ))}
+        </Box>
+      ) : null}
+
+      {!loading && !error && regions && regions.length > 0 ? (
+        <Box sx={{ mt: 3 }}>
+          <Typography variant="h6" component="h2" gutterBottom>
+            Últimas visitas realizadas por sede
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+            {regions.map((region) => (
+              <RecentVisitsSection
+                key={region.id}
+                title={region.name}
+                visits={loadingRecent ? [] : (recentByRegion.get(region.id) ?? [])}
+                emptyMessage="Sin visitas realizadas recientes en esta sede."
+                showSupervisor
+              />
+            ))}
+          </Box>
         </Box>
       ) : null}
     </Box>

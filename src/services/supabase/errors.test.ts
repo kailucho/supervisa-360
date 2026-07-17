@@ -30,6 +30,43 @@ describe('translateError', () => {
     expect(result.message).toContain('conjunta');
   });
 
+  it('detecta la exclusividad de asesor por sede y periodo (índice único parcial)', () => {
+    const result = translateError({
+      code: '23505',
+      message:
+        'duplicate key value violates unique constraint "monthly_plan_assignments_active_unique"',
+    });
+    expect(result.code).toBe('ADVISOR_TAKEN');
+  });
+
+  it('traduce ADVISOR_TAKEN de la RPC conservando el nombre de la supervisora', () => {
+    const result = translateError({
+      code: 'P0001',
+      message:
+        'ADVISOR_TAKEN: El asesor Ana María Quispe ya está asignado a Supervisora de prueba 1 en esta sede y periodo',
+    });
+    expect(result.code).toBe('ADVISOR_TAKEN');
+    expect(result.message).toContain('Supervisora de prueba 1');
+    expect(result.message).not.toMatch(/^ADVISOR_TAKEN/);
+  });
+
+  it('detecta el tope de 10 fotografías por visita', () => {
+    const result = translateError({
+      code: 'P0001',
+      message: 'PHOTO_LIMIT_REACHED: La visita ya tiene el máximo de 10 fotografías',
+    });
+    expect(result.code).toBe('PHOTO_LIMIT_REACHED');
+    expect(result.message).toContain('10');
+  });
+
+  it('detecta evidencias sobre visitas no realizadas', () => {
+    const result = translateError({
+      code: 'P0001',
+      message: 'EVIDENCE_VISIT_NOT_DONE: Solo se pueden subir fotografías a una visita realizada',
+    });
+    expect(result.code).toBe('EVIDENCE_VISIT_NOT_DONE');
+  });
+
   it('detecta resultado incompleto (visits_result_completeness)', () => {
     const result = translateError({
       code: '23514',

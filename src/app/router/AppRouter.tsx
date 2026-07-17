@@ -1,4 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { LoginPage } from '@/features/auth/LoginPage';
 import { ProtectedRoute } from '@/features/auth/ProtectedRoute';
 import { RoleRoute } from '@/features/auth/RoleRoute';
@@ -10,7 +10,6 @@ import { GoalsPage } from '@/features/goals/pages/GoalsPage';
 import { SchedulePage } from '@/features/schedule/pages/SchedulePage';
 import { AssociationsListPage } from '@/features/associations/pages/AssociationsListPage';
 import { AssociationDetailPage } from '@/features/associations/pages/AssociationDetailPage';
-import { AdvisorsListPage } from '@/features/advisors/pages/AdvisorsListPage';
 import { ManagerDashboardPage } from '@/features/management/pages/ManagerDashboardPage';
 import { RegionDetailPage } from '@/features/management/pages/RegionDetailPage';
 
@@ -31,7 +30,9 @@ export function AppRouter() {
           <Route path="/agenda" element={<SchedulePage />} />
           <Route path="/asociaciones" element={<AssociationsListPage />} />
           <Route path="/asociaciones/:id" element={<AssociationDetailPage />} />
-          <Route path="/asesores" element={<AdvisorsListPage />} />
+          {/* La pantalla de asesores se conserva en el código (AdvisorsListPage)
+              pero se retiró de la navegación: /asesores redirige a /inicio. */}
+          <Route path="/asesores" element={<Navigate to="/inicio" replace />} />
           <Route path="/metas" element={<GoalsPage />} />
         </Route>
       </Route>
