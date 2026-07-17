@@ -20,7 +20,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import Diversity3RoundedIcon from '@mui/icons-material/Diversity3Rounded';
 import LogoutRoundedIcon from '@mui/icons-material/LogoutRounded';
-import { DRAWER_WIDTH, NAV_ITEMS } from './navItems';
+import { DRAWER_WIDTH, getNavItems } from './navItems';
 import { useAuth } from '@/features/auth/useAuth';
 
 const BOTTOM_NAV_HEIGHT = 64;
@@ -32,9 +32,10 @@ export function AppLayout() {
   const navigate = useNavigate();
   const { profile, signOut } = useAuth();
 
+  const navItems = getNavItems(profile?.role ?? 'SUPERVISOR');
   const currentPage =
-    NAV_ITEMS.find((item) => item.to === location.pathname) ??
-    NAV_ITEMS.find((item) => item.to !== '/' && location.pathname.startsWith(`${item.to}/`));
+    navItems.find((item) => item.to === location.pathname) ??
+    navItems.find((item) => item.to !== '/' && location.pathname.startsWith(`${item.to}/`));
   const initials = profile?.full_name
     ?.split(' ')
     .slice(0, 2)
@@ -60,7 +61,7 @@ export function AppLayout() {
       </Toolbar>
       <Divider />
       <List sx={{ flexGrow: 1, px: 1.5, py: 2 }}>
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           return (
             <ListItem key={item.to} disablePadding sx={{ mb: 0.5 }}>
@@ -188,7 +189,7 @@ export function AppLayout() {
             zIndex: (t) => t.zIndex.appBar,
           }}
         >
-          {NAV_ITEMS.map((item) => {
+          {navItems.map((item) => {
             const Icon = item.icon;
             return (
               <BottomNavigationAction

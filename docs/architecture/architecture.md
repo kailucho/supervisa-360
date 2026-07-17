@@ -78,18 +78,49 @@ identificable, sin necesitar una arquitectura de monorepo ni microservicios.
   fijas administradas manualmente).
 - El registro público debe estar **deshabilitado** en la configuración de Supabase
   Auth, ya que no existe ese flujo en el MVP.
-- Rutas de la aplicación protegidas: sin sesión válida, se redirige al login.
-- No se plantean roles diferenciados en el MVP (ambas supervisoras son
-  equivalentes); la tabla de perfiles solo distingue "quién es quién" para mostrar
-  nombre y para atribuir autoría de visitas y metas individuales.
+- Rutas de la aplicación protegidas: sin sesión válida, se redirige al login
+  (`ProtectedRoute`).
+- **Dos roles** (`profiles.role`, enum `app_role`): `SUPERVISOR` y
+  `SUPERVISION_MANAGER` (RN-28). Las supervisoras son equivalentes entre sí; el
+  jefe solo consulta y define metas conjuntas por sede.
+
+### Rutas por rol
+
+| Ruta                                                         | Acceso                                                          |
+| ------------------------------------------------------------ | --------------------------------------------------------------- |
+| `/login`                                                     | público                                                         |
+| `/`                                                          | `RoleHomeRedirect` → inicio del rol                             |
+| `/inicio`                                                    | solo `SUPERVISOR`                                               |
+| `/jefatura`                                                  | solo `SUPERVISION_MANAGER`                                      |
+| `/jefatura/sedes/:regionId`                                  | solo `SUPERVISION_MANAGER`                                      |
+| `/agenda`, `/asociaciones`, `/asociaciones/:id`, `/asesores` | compartidas (lectura completa; las acciones se ocultan al jefe) |
+| `/metas`                                                     | compartida; el contenido se ramifica por rol                    |
+
+- `RoleRoute allow={[...]}` (en `src/features/auth/`) envuelve los grupos
+  exclusivos y **redirige** al inicio del rol en lugar de mostrar una página
+  muerta. `RoleHomeRedirect` resuelve `/` según el rol, así que el default de
+  `LoginPage` no necesita conocerlo.
+- El menú se construye con `getNavItems(role)`
+  (`src/app/layout/navItems.ts`): mismos ítems para ambos roles, pero "Inicio"
+  apunta a `/inicio` o `/jefatura`. No existe opción de auditoría.
+- Las comprobaciones de permiso están centralizadas en
+  `src/shared/utils/permissions.ts` (`isSupervisor`, `isSupervisionManager`,
+  `canManageVisits`, `canManageAssociations`, `canManagePersonalGoals`,
+  `canManageRegionalGoals`, `homePathForRole`): funciones puras y testeadas, sin
+  comparaciones `role === '...'` dispersas por las páginas.
 
 ## Estrategia general de seguridad
 
 - Toda tabla con datos de negocio tiene RLS **habilitado**; sin políticas
   explícitas, el acceso por defecto es denegado.
-- Las políticas permiten lectura y escritura a cualquier usuario autenticado
-  (`authenticated`), dado que el MVP no diferencia permisos entre las 2
-  supervisoras. No se expone ninguna tabla al rol `anon`.
+- Las políticas se apoyan en `public.current_app_role()` (`security definer`,
+  `stable`), que devuelve el rol del usuario autenticado o `NULL` si su perfil no
+  está activo: la lectura exige perfil activo, las escrituras operativas exigen
+  `SUPERVISOR` y las metas conjuntas exigen `SUPERVISION_MANAGER`. No se expone
+  ninguna tabla al rol `anon`.
+- **El gating del frontend es solo UX**: ocultar botones no es una medida de
+  seguridad. Toda restricción del jefe está garantizada por RLS y por los `GRANT`
+  por columna (ver `database-design.md` §14).
 - Las claves/API keys públicas de Supabase (anon key) son seguras de exponer en el
   frontend porque el control de acceso real ocurre vía RLS, no por ocultar la key.
   La _service role key_ (con permisos totales) nunca se usa desde el frontend.

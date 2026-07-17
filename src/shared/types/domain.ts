@@ -8,8 +8,12 @@ export type AdvisorRow = Tables['advisors']['Row'];
 export type AssociationRow = Tables['associations']['Row'];
 export type VisitRow = Tables['visits']['Row'];
 export type MonthlyGoalRow = Tables['monthly_goals']['Row'];
-export type MonthlyProgressRow = Database['public']['Views']['v_monthly_progress']['Row'];
+export type RegionalMonthlyGoalRow = Tables['regional_monthly_goals']['Row'];
+export type IndividualProgressRow =
+  Database['public']['Views']['v_individual_monthly_progress']['Row'];
+export type JointProgressRow = Database['public']['Views']['v_joint_monthly_progress']['Row'];
 
+export type AppRole = Database['public']['Enums']['app_role'];
 export type AssociationStatus = Database['public']['Enums']['association_status'];
 export type VisitType = Database['public']['Enums']['visit_type'];
 export type VisitModality = Database['public']['Enums']['visit_modality'];

@@ -70,14 +70,23 @@ npm run supabase:start   # requiere Docker
 npm run db:reset          # migraciones + seed.sql
 ```
 
-El seed crea, entre otros datos ficticios, dos supervisoras de prueba:
+El seed crea, entre otros datos ficticios, tres cuentas de prueba:
 
-| Correo                            | Contraseña      |
-| --------------------------------- | --------------- |
-| `supervisora1@supervisa360.local` | `Supervisa360!` |
-| `supervisora2@supervisa360.local` | `Supervisa360!` |
+| Correo                            | Contraseña      | Rol                   |
+| --------------------------------- | --------------- | --------------------- |
+| `supervisora1@supervisa360.local` | `Supervisa360!` | `SUPERVISOR`          |
+| `supervisora2@supervisa360.local` | `Supervisa360!` | `SUPERVISOR`          |
+| `jefe@supervisa360.local`         | `Supervisa360!` | `SUPERVISION_MANAGER` |
 
 Estas credenciales son **solo para desarrollo local**; no existen en producción.
+
+El rol vive en `profiles.role` (enum `app_role`, default `SUPERVISOR`). Para
+asignar el rol de jefe a una cuenta real en producción, tras crear el usuario en
+Supabase Auth y su fila en `profiles`:
+
+```sql
+update public.profiles set role = 'SUPERVISION_MANAGER' where id = '<uuid-del-usuario>';
+```
 
 ## Ejecutar el frontend
 

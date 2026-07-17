@@ -26,6 +26,7 @@ import { LoadingState } from '@/shared/components/LoadingState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { EmptyState } from '@/shared/components/EmptyState';
 import { isSupervisable } from '@/shared/types/domain';
+import { canManageAssociations, canManageVisits } from '@/shared/utils/permissions';
 import {
   ASSOCIATION_STATUS_COLORS,
   ASSOCIATION_STATUS_LABELS,
@@ -94,6 +95,8 @@ export function AssociationDetailPage() {
   }
 
   const supervisable = isSupervisable(association.status);
+  const canEdit = canManageAssociations(profile);
+  const canOperateVisits = canManageVisits(profile);
 
   const handleReload = () => {
     reloadAssociation();
@@ -146,36 +149,42 @@ export function AssociationDetailPage() {
           </Box>
         </Box>
 
-        <Box
-          sx={{
-            mt: 3,
-            display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            gap: 2,
-            flexWrap: 'wrap',
-          }}
-        >
-          <Button
-            variant="outlined"
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-            onClick={() => setEditOpen(true)}
+        {canEdit || canOperateVisits ? (
+          <Box
+            sx={{
+              mt: 3,
+              display: 'flex',
+              flexDirection: { xs: 'column', sm: 'row' },
+              gap: 2,
+              flexWrap: 'wrap',
+            }}
           >
-            Editar estado / asesor
-          </Button>
-          <Button
-            variant="contained"
-            sx={{ width: { xs: '100%', sm: 'auto' } }}
-            disabled={!supervisable}
-            onClick={() => setScheduleOpen(true)}
-            title={
-              supervisable
-                ? undefined
-                : 'No se puede programar: la asociación no está en un estado supervisable.'
-            }
-          >
-            Programar visita
-          </Button>
-        </Box>
+            {canEdit ? (
+              <Button
+                variant="outlined"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                onClick={() => setEditOpen(true)}
+              >
+                Editar estado / asesor
+              </Button>
+            ) : null}
+            {canOperateVisits ? (
+              <Button
+                variant="contained"
+                sx={{ width: { xs: '100%', sm: 'auto' } }}
+                disabled={!supervisable}
+                onClick={() => setScheduleOpen(true)}
+                title={
+                  supervisable
+                    ? undefined
+                    : 'No se puede programar: la asociación no está en un estado supervisable.'
+                }
+              >
+                Programar visita
+              </Button>
+            ) : null}
+          </Box>
+        ) : null}
         {!supervisable ? (
           <Alert severity="info" sx={{ mt: 2 }}>
             Esta asociación está en estado {ASSOCIATION_STATUS_LABELS[association.status]} y no
@@ -239,7 +248,9 @@ export function AssociationDetailPage() {
                         </Typography>
                       ) : null}
                     </Box>
-                    <VisitActionsMenu visit={visit} onChanged={handleReload} />
+                    {canOperateVisits ? (
+                      <VisitActionsMenu visit={visit} onChanged={handleReload} />
+                    ) : null}
                   </Box>
                 </CardContent>
               </Card>
@@ -260,7 +271,7 @@ export function AssociationDetailPage() {
                   <TableCell>Estado</TableCell>
                   <TableCell>Puntuación</TableCell>
                   <TableCell>Comentario</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
+                  {canOperateVisits ? <TableCell align="right">Acciones</TableCell> : null}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -284,9 +295,11 @@ export function AssociationDetailPage() {
                     <TableCell sx={{ maxWidth: 240, whiteSpace: 'normal' }}>
                       {visit.general_comment ?? '—'}
                     </TableCell>
-                    <TableCell align="right">
-                      <VisitActionsMenu visit={visit} onChanged={handleReload} />
-                    </TableCell>
+                    {canOperateVisits ? (
+                      <TableCell align="right">
+                        <VisitActionsMenu visit={visit} onChanged={handleReload} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

@@ -17,9 +17,11 @@ import Typography from '@mui/material/Typography';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import { fetchAgendaVisits } from '@/services/supabase/visits';
-import { fetchActiveProfiles } from '@/services/supabase/profiles';
+import { fetchActiveSupervisors } from '@/services/supabase/profiles';
 import { fetchRegions } from '@/services/supabase/regions';
 import { useAsyncData } from '@/shared/hooks/useAsyncData';
+import { useAuth } from '@/features/auth/useAuth';
+import { canManageVisits } from '@/shared/utils/permissions';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { EmptyState } from '@/shared/components/EmptyState';
@@ -40,13 +42,15 @@ export function SchedulePage() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const { profile } = useAuth();
+  const canEdit = canManageVisits(profile);
 
   const [{ year, month }, setYearMonth] = useState(getLimaNowYearMonth());
   const [supervisorId, setSupervisorId] = useState('');
   const [status, setStatus] = useState<VisitStatus | ''>('');
   const [regionId, setRegionId] = useState('');
 
-  const { data: supervisors } = useAsyncData(fetchActiveProfiles, []);
+  const { data: supervisors } = useAsyncData(fetchActiveSupervisors, []);
   const { data: regions } = useAsyncData(fetchRegions, []);
 
   const filters = useMemo(
@@ -85,7 +89,7 @@ export function SchedulePage() {
         <Typography variant="h5" component="h1">
           Agenda compartida
         </Typography>
-        <ScheduleNewVisitButton onScheduled={reload} />
+        {canEdit ? <ScheduleNewVisitButton onScheduled={reload} /> : null}
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 2, mb: 2 }}>
@@ -181,7 +185,7 @@ export function SchedulePage() {
                         color={VISIT_STATUS_COLORS[visit.status]}
                       />
                     </Box>
-                    <VisitActionsMenu visit={visit} onChanged={reload} />
+                    {canEdit ? <VisitActionsMenu visit={visit} onChanged={reload} /> : null}
                   </Box>
                 </CardContent>
               </Card>
@@ -202,7 +206,7 @@ export function SchedulePage() {
                   <TableCell>Modalidad</TableCell>
                   <TableCell>Característica</TableCell>
                   <TableCell>Estado</TableCell>
-                  <TableCell align="right">Acciones</TableCell>
+                  {canEdit ? <TableCell align="right">Acciones</TableCell> : null}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -229,9 +233,11 @@ export function SchedulePage() {
                         color={VISIT_STATUS_COLORS[visit.status]}
                       />
                     </TableCell>
-                    <TableCell align="right">
-                      <VisitActionsMenu visit={visit} onChanged={reload} />
-                    </TableCell>
+                    {canEdit ? (
+                      <TableCell align="right">
+                        <VisitActionsMenu visit={visit} onChanged={reload} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

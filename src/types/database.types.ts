@@ -114,6 +114,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          region_id: string
           supervisor_id: string
           target_visits: number
           updated_at: string
@@ -123,6 +124,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          region_id: string
           supervisor_id: string
           target_visits: number
           updated_at?: string
@@ -132,12 +134,20 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          region_id?: string
           supervisor_id?: string
           target_visits?: number
           updated_at?: string
           year?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "monthly_goals_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "monthly_goals_supervisor_id_fkey"
             columns: ["supervisor_id"]
@@ -153,6 +163,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          role: Database["public"]["Enums"]["app_role"]
           updated_at: string
         }
         Insert: {
@@ -160,6 +171,7 @@ export type Database = {
           full_name: string
           id: string
           is_active?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Update: {
@@ -167,9 +179,68 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          role?: Database["public"]["Enums"]["app_role"]
           updated_at?: string
         }
         Relationships: []
+      }
+      regional_monthly_goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          month: number
+          region_id: string
+          target_visits: number
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month: number
+          region_id: string
+          target_visits: number
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month?: number
+          region_id?: string
+          target_visits?: number
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "regional_monthly_goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regional_monthly_goals_region_id_fkey"
+            columns: ["region_id"]
+            isOneToOne: false
+            referencedRelation: "regions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "regional_monthly_goals_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       regions: {
         Row: {
@@ -295,33 +366,45 @@ export type Database = {
       }
     }
     Views: {
-      v_monthly_progress: {
+      v_individual_monthly_progress: {
         Row: {
+          has_goal: boolean | null
           individual_active: number | null
           individual_done: number | null
           individual_target: number | null
-          joint_active: number | null
-          joint_done: number | null
-          joint_target: number | null
           month: number | null
+          region_id: string | null
+          region_name: string | null
           supervisor_id: string | null
+          supervisor_name: string | null
           year: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "monthly_goals_supervisor_id_fkey"
-            columns: ["supervisor_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
+      }
+      v_joint_monthly_progress: {
+        Row: {
+          configured_joint_target: number | null
+          effective_joint_target: number | null
+          is_configured: boolean | null
+          joint_active: number | null
+          joint_done: number | null
+          month: number | null
+          region_id: string | null
+          region_name: string | null
+          suggested_joint_target: number | null
+          year: number | null
+        }
+        Relationships: []
       }
     }
     Functions: {
-      [_ in never]: never
+      current_app_role: {
+        Args: never
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
     }
     Enums: {
+      app_role: "SUPERVISOR" | "SUPERVISION_MANAGER"
       association_status:
         | "NUEVA"
         | "NORMAL"
@@ -469,6 +552,7 @@ export const Constants = {
   },
   public: {
     Enums: {
+      app_role: ["SUPERVISOR", "SUPERVISION_MANAGER"],
       association_status: [
         "NUEVA",
         "NORMAL",

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   loginSchema,
-  monthlyGoalSchema,
+  personalGoalSchema,
+  regionalGoalSchema,
   scoreSchema,
   visitResultSchema,
   visitScheduleSchema,
@@ -130,17 +131,50 @@ describe('visitScheduleSchema (RN-15)', () => {
   });
 });
 
-describe('monthlyGoalSchema (RN-23)', () => {
-  it('acepta cero', () => {
-    expect(monthlyGoalSchema.safeParse({ targetVisits: 0 }).success).toBe(true);
+const VALID_GOAL = {
+  regionId: '9f8b6f6e-1c2d-4e3f-8a5b-6c7d8e9f0a1b',
+  year: 2026,
+  month: 7,
+  targetVisits: 10,
+};
+
+describe('personalGoalSchema (RN-23, RN-29)', () => {
+  it('acepta cero como meta', () => {
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: 0 }).success).toBe(true);
   });
 
-  it('rechaza negativos', () => {
-    expect(monthlyGoalSchema.safeParse({ targetVisits: -1 }).success).toBe(false);
+  it('rechaza metas negativas', () => {
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: -1 }).success).toBe(false);
   });
 
   it('rechaza decimales', () => {
-    expect(monthlyGoalSchema.safeParse({ targetVisits: 1.5 }).success).toBe(false);
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: 1.5 }).success).toBe(false);
+  });
+
+  it('exige una sede válida (uuid)', () => {
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, regionId: 'no-uuid' }).success).toBe(
+      false,
+    );
+  });
+
+  it('rechaza mes fuera de rango', () => {
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, month: 13 }).success).toBe(false);
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, month: 0 }).success).toBe(false);
+  });
+
+  it('rechaza año fuera de rango', () => {
+    expect(personalGoalSchema.safeParse({ ...VALID_GOAL, year: 2024 }).success).toBe(false);
+  });
+});
+
+describe('regionalGoalSchema (RN-30)', () => {
+  it('acepta cero como meta conjunta', () => {
+    expect(regionalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: 0 }).success).toBe(true);
+  });
+
+  it('rechaza decimales y negativos', () => {
+    expect(regionalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: 2.5 }).success).toBe(false);
+    expect(regionalGoalSchema.safeParse({ ...VALID_GOAL, targetVisits: -3 }).success).toBe(false);
   });
 });
 

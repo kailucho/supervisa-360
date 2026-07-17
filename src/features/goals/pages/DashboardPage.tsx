@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import { fetchMonthlyProgress } from '@/services/supabase/goals';
+import { fetchIndividualProgress, fetchJointProgress } from '@/services/supabase/goals';
 import {
   fetchOverdueActiveVisits,
   fetchRescheduledVisits,
@@ -13,7 +13,7 @@ import { MonthNavigator } from '@/shared/components/MonthNavigator';
 import { LoadingState } from '@/shared/components/LoadingState';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { getLimaNowYearMonth } from '@/shared/utils/date';
-import { summarizeIndividualProgress, summarizeJointProgress } from '@/features/goals/progressMath';
+import { sumIndividualProgress, sumJointProgress } from '@/features/goals/progressMath';
 import { ProgressCard } from '@/features/goals/components/ProgressCard';
 import { VisitListSection } from '@/features/goals/components/VisitListSection';
 
@@ -22,11 +22,19 @@ export function DashboardPage() {
   const [{ year, month }, setYearMonth] = useState(getLimaNowYearMonth());
 
   const {
-    data: progressRows,
+    data: individualRows,
     loading: loadingProgress,
     error: progressError,
     reload: reloadProgress,
-  } = useAsyncData(() => fetchMonthlyProgress(year, month), [year, month]);
+  } = useAsyncData(
+    () => fetchIndividualProgress(year, month, { supervisorId: profile!.id }),
+    [year, month, profile?.id],
+  );
+
+  const { data: jointRows, loading: loadingJoint } = useAsyncData(
+    () => fetchJointProgress(year, month),
+    [year, month],
+  );
 
   const { data: upcoming, loading: loadingUpcoming } = useAsyncData(
     () => fetchUpcomingVisits(5),
@@ -41,12 +49,12 @@ export function DashboardPage() {
     [],
   );
 
-  const individualSummary = useMemo(() => {
-    const row = progressRows?.find((r) => r.supervisor_id === profile?.id) ?? null;
-    return summarizeIndividualProgress(row);
-  }, [progressRows, profile]);
+  const individualSummary = useMemo(
+    () => sumIndividualProgress(individualRows ?? []),
+    [individualRows],
+  );
 
-  const jointSummary = useMemo(() => summarizeJointProgress(progressRows ?? []), [progressRows]);
+  const jointSummary = useMemo(() => sumJointProgress(jointRows ?? []), [jointRows]);
 
   return (
     <Box>
@@ -72,16 +80,16 @@ export function DashboardPage() {
       </Box>
 
       {progressError ? <ErrorState error={progressError} onRetry={reloadProgress} /> : null}
-      {loadingProgress && !progressError ? (
+      {(loadingProgress || loadingJoint) && !progressError ? (
         <LoadingState label="Cargando avance del mes…" />
       ) : (
         !progressError && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 4 }}>
             <ProgressCard
-              title={`Tu avance (${profile?.full_name ?? 'supervisora'})`}
+              title={`Tu avance (${profile?.full_name ?? 'supervisora'}, todas las sedes)`}
               summary={individualSummary}
             />
-            <ProgressCard title="Avance conjunto (ambas supervisoras)" summary={jointSummary} />
+            <ProgressCard title="Avance conjunto (todas las sedes)" summary={jointSummary} />
           </Box>
         )
       )}

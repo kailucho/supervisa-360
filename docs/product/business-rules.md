@@ -122,9 +122,13 @@ del usuario), **[Supuesto]** (interpretación razonable no confirmada aún) o
 ## 8. Metas
 
 - **RN-23 [Confirmado]** — Cada supervisora tiene una meta mensual individual
-  (referencia inicial: 15 visitas/mes), configurable mes a mes.
-- **RN-24 [Confirmado]** — La meta conjunta del mes es la suma de las metas
-  individuales vigentes ese mes.
+  (referencia inicial: 15 visitas/mes), configurable mes a mes. Desde la
+  incorporación del rol de jefatura, la meta individual es **por sede** (ver
+  RN-29).
+- **RN-24 [Confirmado, reemplazada por RN-30]** — Originalmente la meta conjunta
+  del mes era la suma de las metas individuales. Con las metas por sede, esa suma
+  pasa a llamarse **meta sugerida** y el jefe puede definir una **meta conjunta**
+  distinta por sede (RN-30).
 - **RN-25 [Confirmado]** — Una visita cuenta para la meta (individual de quien la
   hizo, y conjunta) **solo cuando su estado es `REALIZADA`**.
 - **RN-26 [Confirmado]** — Visitas `ORDINARIA` y de seguimiento (`SEGUIMIENTO`,
@@ -134,3 +138,41 @@ del usuario), **[Supuesto]** (interpretación razonable no confirmada aún) o
 - **RN-27 [Confirmado]** — No se requiere mostrar un indicador de "asociaciones
   únicas visitadas"; la meta se mide en cantidad de visitas realizadas, sin
   deduplicar por asociación.
+
+## 9. Roles y jefatura
+
+- **RN-28 [Confirmado]** — Existen dos roles de aplicación (`profiles.role`, enum
+  `app_role`): `SUPERVISOR` y `SUPERVISION_MANAGER` (Jefe de Supervisión). La
+  supervisora conserva su flujo operativo completo. El jefe tiene **acceso global
+  de solo consulta**: sedes, agenda, visitas (con puntuaciones y comentarios),
+  asociaciones, asesores, metas personales y avances. El jefe **no puede**
+  programar/reprogramar/cancelar/cerrar visitas, editar resultados, modificar
+  asociaciones o asesores, administrar usuarios ni crear/modificar metas
+  personales. Su única capacidad de escritura es la meta conjunta por sede
+  (RN-30). Estas restricciones se aplican en el frontend **y** en las políticas
+  RLS (no basta con ocultar botones).
+- **RN-29 [Confirmado]** — La meta personal de una supervisora es por
+  **sede (región), año y mes**: unicidad `(supervisor_id, region_id, year,
+month)`. Una supervisora puede trabajar en varias sedes y tener metas distintas
+  en cada una durante el mismo mes. La meta acepta cero. Solo la propia
+  supervisora administra sus metas personales.
+- **RN-30 [Confirmado]** — La **meta conjunta mensual por sede** vive en
+  `regional_monthly_goals` (unicidad `region_id, year, month`) y solo el jefe la
+  crea/actualiza/elimina; los perfiles activos pueden consultarla. Para cada sede
+  y mes: `meta sugerida = suma de metas personales de esa sede`; `meta efectiva =
+meta conjunta configurada si existe; de lo contrario, la sugerida`. La interfaz
+  distingue "Meta sugerida" de "Meta definida". La fila solo se crea cuando el
+  jefe confirma el valor, nunca por consultar la pantalla.
+- **RN-31 [Confirmado]** — La **sede de una visita es la sede de su asociación**
+  (`visits.association_id → associations.region_id`), nunca una sede fija del
+  perfil de la supervisora. El avance realizado se cuenta por mes de
+  `performed_date` con estado `REALIZADA`; el activo por mes de `scheduled_date`
+  con estado `PROGRAMADA`/`REPROGRAMADA`. Una visita realizada cuenta para el
+  avance de su sede aunque la supervisora no tenga meta configurada allí.
+- **RN-32 [Confirmado]** — Existe **auditoría a nivel de base de datos**
+  (`private.audit_logs`): cada INSERT/UPDATE/DELETE sobre `profiles`,
+  `associations`, `visits`, `monthly_goals` y `regional_monthly_goals` registra
+  tabla, registro, operación, usuario autenticado, valor anterior y nuevo
+  (`jsonb`) y fecha. No hay pantalla de auditoría en la aplicación ni acceso para
+  `anon`/`authenticated`; se consulta solo desde Supabase Studio o psql. Esto
+  actualiza la salvedad "no hay log de auditoría" de RN-22.

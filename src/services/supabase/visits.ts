@@ -53,7 +53,10 @@ export async function fetchAgendaVisits(filters: AgendaFilters): Promise<VisitWi
   return rows;
 }
 
-export async function fetchUpcomingVisits(limit = 5): Promise<VisitWithRelations[]> {
+export async function fetchUpcomingVisits(
+  limit = 5,
+  regionId?: string,
+): Promise<VisitWithRelations[]> {
   const today = getLimaTodayISODate();
   const { data, error } = await supabase
     .from('visits')
@@ -64,10 +67,15 @@ export async function fetchUpcomingVisits(limit = 5): Promise<VisitWithRelations
     .order('scheduled_time', { ascending: true, nullsFirst: false })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as VisitWithRelations[];
+  let rows = (data ?? []) as unknown as VisitWithRelations[];
+  if (regionId) rows = rows.filter((v) => v.association?.region_id === regionId);
+  return rows;
 }
 
-export async function fetchOverdueActiveVisits(limit = 10): Promise<VisitWithRelations[]> {
+export async function fetchOverdueActiveVisits(
+  limit = 10,
+  regionId?: string,
+): Promise<VisitWithRelations[]> {
   const today = getLimaTodayISODate();
   const { data, error } = await supabase
     .from('visits')
@@ -77,7 +85,9 @@ export async function fetchOverdueActiveVisits(limit = 10): Promise<VisitWithRel
     .order('scheduled_date', { ascending: true })
     .limit(limit);
   if (error) throw error;
-  return (data ?? []) as unknown as VisitWithRelations[];
+  let rows = (data ?? []) as unknown as VisitWithRelations[];
+  if (regionId) rows = rows.filter((v) => v.association?.region_id === regionId);
+  return rows;
 }
 
 export async function fetchRescheduledVisits(limit = 10): Promise<VisitWithRelations[]> {

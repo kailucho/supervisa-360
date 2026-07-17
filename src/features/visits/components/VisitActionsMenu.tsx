@@ -17,6 +17,8 @@ import {
 } from '@/services/supabase/visits';
 import type { VisitRow } from '@/shared/types/domain';
 import { translateError } from '@/services/supabase/errors';
+import { useAuth } from '@/features/auth/useAuth';
+import { canManageVisits } from '@/shared/utils/permissions';
 
 export interface VisitActionsMenuProps {
   visit: VisitRow;
@@ -26,6 +28,7 @@ export interface VisitActionsMenuProps {
 type DialogKind = null | 'reschedule' | 'cancel' | 'notDone' | 'markDone' | 'editResult';
 
 export function VisitActionsMenu({ visit, onChanged }: VisitActionsMenuProps) {
+  const { profile } = useAuth();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [dialog, setDialog] = useState<DialogKind>(null);
   const [busy, setBusy] = useState(false);
@@ -36,6 +39,13 @@ export function VisitActionsMenu({ visit, onChanged }: VisitActionsMenuProps) {
 
   const isActive = visit.status === 'PROGRAMADA' || visit.status === 'REPROGRAMADA';
   const isDone = visit.status === 'REALIZADA';
+
+  // Defensa en profundidad: además de que las páginas ocultan este menú para
+  // el jefe, el propio componente no se renderiza sin permisos operativos
+  // (la restricción real vive en las políticas RLS).
+  if (!canManageVisits(profile)) {
+    return null;
+  }
 
   if (!isActive && !isDone) {
     return null;

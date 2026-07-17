@@ -20,8 +20,9 @@ create extension if not exists pgcrypto with schema extensions;
 -- -----------------------------------------------------------------------------
 
 -- Credenciales locales de prueba:
---   supervisora1@supervisa360.local / Supervisa360!
---   supervisora2@supervisa360.local / Supervisa360!
+--   supervisora1@supervisa360.local / Supervisa360!  (rol SUPERVISOR)
+--   supervisora2@supervisa360.local / Supervisa360!  (rol SUPERVISOR)
+--   jefe@supervisa360.local         / Supervisa360!  (rol SUPERVISION_MANAGER)
 
 insert into auth.users (
   instance_id,
@@ -92,6 +93,29 @@ values
     false,
     now(),
     now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000000',
+    '10000000-0000-4000-8000-000000000003',
+    'authenticated',
+    'authenticated',
+    'jefe@supervisa360.local',
+    extensions.crypt('Supervisa360!', extensions.gen_salt('bf')),
+    now(),
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '',
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"full_name":"Jefe de Supervisión de prueba"}'::jsonb,
+    false,
+    false,
+    now(),
+    now()
   )
 on conflict (id) do update
 set
@@ -153,6 +177,21 @@ values
     now(),
     now(),
     now()
+  ),
+  (
+    '11000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000003',
+    '10000000-0000-4000-8000-000000000003',
+    jsonb_build_object(
+      'sub', '10000000-0000-4000-8000-000000000003',
+      'email', 'jefe@supervisa360.local',
+      'email_verified', true,
+      'phone_verified', false
+    ),
+    'email',
+    now(),
+    now(),
+    now()
   )
 on conflict (provider_id, provider) do update
 set
@@ -162,25 +201,34 @@ set
   updated_at = now();
 
 -- -----------------------------------------------------------------------------
--- 2. Perfiles de supervisoras
+-- 2. Perfiles (supervisoras y jefe de supervisión)
 -- -----------------------------------------------------------------------------
 
-insert into public.profiles (id, full_name, is_active)
+insert into public.profiles (id, full_name, is_active, role)
 values
   (
     '10000000-0000-4000-8000-000000000001',
     'Supervisora de prueba 1',
-    true
+    true,
+    'SUPERVISOR'
   ),
   (
     '10000000-0000-4000-8000-000000000002',
     'Supervisora de prueba 2',
-    true
+    true,
+    'SUPERVISOR'
+  ),
+  (
+    '10000000-0000-4000-8000-000000000003',
+    'Jefe de Supervisión de prueba',
+    true,
+    'SUPERVISION_MANAGER'
   )
 on conflict (id) do update
 set
   full_name = excluded.full_name,
-  is_active = excluded.is_active;
+  is_active = excluded.is_active,
+  role = excluded.role;
 
 -- -----------------------------------------------------------------------------
 -- 3. Regiones
@@ -327,50 +375,69 @@ set
   advisor_id = excluded.advisor_id;
 
 -- -----------------------------------------------------------------------------
--- 6. Metas del mes actual y del mes anterior
+-- 6. Metas personales por sede (mes actual y mes anterior)
 -- -----------------------------------------------------------------------------
 
+-- Valores distintos por sede para poder verificar el cálculo por región:
+--   Supervisora 1: Arequipa 10 / Tacna 5.
+--   Supervisora 2: Arequipa 8  / Tacna 7.
+-- Meta sugerida resultante: Arequipa 18, Tacna 12.
 insert into public.monthly_goals (
   supervisor_id,
+  region_id,
   year,
   month,
   target_visits
 )
-values
-  (
-    '10000000-0000-4000-8000-000000000001',
-    extract(year from timezone('America/Lima', now()))::smallint,
-    extract(month from timezone('America/Lima', now()))::smallint,
-    15
-  ),
-  (
-    '10000000-0000-4000-8000-000000000002',
-    extract(year from timezone('America/Lima', now()))::smallint,
-    extract(month from timezone('America/Lima', now()))::smallint,
-    15
-  ),
-  (
-    '10000000-0000-4000-8000-000000000001',
-    extract(
-      year from timezone('America/Lima', now()) - interval '1 month'
-    )::smallint,
-    extract(
-      month from timezone('America/Lima', now()) - interval '1 month'
-    )::smallint,
-    15
-  ),
-  (
-    '10000000-0000-4000-8000-000000000002',
-    extract(
-      year from timezone('America/Lima', now()) - interval '1 month'
-    )::smallint,
-    extract(
-      month from timezone('America/Lima', now()) - interval '1 month'
-    )::smallint,
-    15
-  )
-on conflict (supervisor_id, year, month) do update
+select
+  g.supervisor_id,
+  (select id from public.regions where code = g.region_code),
+  extract(year from timezone('America/Lima', now()) - g.offset_months)::smallint,
+  extract(month from timezone('America/Lima', now()) - g.offset_months)::smallint,
+  g.target_visits
+from (
+  values
+    ('10000000-0000-4000-8000-000000000001'::uuid, 'AREQUIPA', interval '0 months', 10::smallint),
+    ('10000000-0000-4000-8000-000000000001'::uuid, 'TACNA',    interval '0 months', 5::smallint),
+    ('10000000-0000-4000-8000-000000000002'::uuid, 'AREQUIPA', interval '0 months', 8::smallint),
+    ('10000000-0000-4000-8000-000000000002'::uuid, 'TACNA',    interval '0 months', 7::smallint),
+    ('10000000-0000-4000-8000-000000000001'::uuid, 'AREQUIPA', interval '1 month',  10::smallint),
+    ('10000000-0000-4000-8000-000000000001'::uuid, 'TACNA',    interval '1 month',  5::smallint),
+    ('10000000-0000-4000-8000-000000000002'::uuid, 'AREQUIPA', interval '1 month',  8::smallint),
+    ('10000000-0000-4000-8000-000000000002'::uuid, 'TACNA',    interval '1 month',  7::smallint)
+) as g (supervisor_id, region_code, offset_months, target_visits)
+on conflict (supervisor_id, region_id, year, month) do update
 set target_visits = excluded.target_visits;
+
+-- -----------------------------------------------------------------------------
+-- 6b. Meta conjunta configurada por el jefe (solo Arequipa, mes actual)
+-- -----------------------------------------------------------------------------
+
+-- Se simula al jefe autenticado para que el trigger registre created_by y la
+-- auditoría atribuya el cambio. Tacna queda sin configurar a propósito: su meta
+-- efectiva debe ser la sugerida (12).
+select set_config(
+  'request.jwt.claim.sub',
+  '10000000-0000-4000-8000-000000000003',
+  true
+);
+
+insert into public.regional_monthly_goals (
+  region_id,
+  year,
+  month,
+  target_visits
+)
+values (
+  (select id from public.regions where code = 'AREQUIPA'),
+  extract(year from timezone('America/Lima', now()))::smallint,
+  extract(month from timezone('America/Lima', now()))::smallint,
+  20
+)
+on conflict (region_id, year, month) do update
+set target_visits = excluded.target_visits;
+
+select set_config('request.jwt.claim.sub', '', true);
 
 -- -----------------------------------------------------------------------------
 -- 7. Visitas de ejemplo
@@ -384,7 +451,8 @@ where id in (
   '40000000-0000-4000-8000-000000000003',
   '40000000-0000-4000-8000-000000000004',
   '40000000-0000-4000-8000-000000000005',
-  '40000000-0000-4000-8000-000000000006'
+  '40000000-0000-4000-8000-000000000006',
+  '40000000-0000-4000-8000-000000000007'
 );
 
 -- Todas las visitas deben nacer PROGRAMADA. El trigger obtiene y congela
@@ -519,6 +587,44 @@ update public.visits
 set status = 'CANCELADA'
 where id = '40000000-0000-4000-8000-000000000004';
 
+-- Visita REALIZADA en una asociación de TACNA, para verificar que el avance se
+-- calcula por la sede de la asociación. Se inserta después de cancelar la
+-- visita 4 porque comparte asociación (RN-12: una sola visita activa).
+insert into public.visits (
+  id,
+  association_id,
+  supervisor_id,
+  visit_type,
+  modality,
+  characteristic,
+  scheduled_date,
+  scheduled_time
+)
+values (
+  '40000000-0000-4000-8000-000000000007',
+  '30000000-0000-4000-8000-000000000004',
+  '10000000-0000-4000-8000-000000000002',
+  'SEGUIMIENTO',
+  'PRESENCIAL',
+  'ANUNCIADA',
+  date_trunc('month', timezone('America/Lima', now()))::date + 6,
+  '11:00'::time
+);
+
+update public.visits
+set
+  status = 'REALIZADA',
+  performed_date = date_trunc(
+    'month',
+    timezone('America/Lima', now())
+  )::date + 6,
+  start_time = '11:05'::time,
+  end_time = '12:00'::time,
+  score = 5,
+  general_comment =
+    'Visita de seguimiento en Tacna completada. La asociación regularizó sus pagos y mantiene registros al día.'
+where id = '40000000-0000-4000-8000-000000000007';
+
 -- Una visita que no pudo realizarse.
 update public.visits
 set status = 'NO_REALIZADA'
@@ -534,12 +640,18 @@ commit;
 -- =============================================================================
 -- Resultado esperado después de `npx supabase db reset`:
 --
--- - 2 usuarios autenticables y 2 perfiles activos.
+-- - 3 usuarios autenticables: 2 supervisoras (SUPERVISOR) y 1 jefe
+--   (SUPERVISION_MANAGER).
 -- - 2 regiones.
 -- - 4 asesores.
 -- - 9 asociaciones con distintos estados.
--- - Meta individual de 15 para cada supervisora.
--- - 2 visitas REALIZADAS.
+-- - Metas personales por sede (mes actual y anterior):
+--     Supervisora 1: Arequipa 10 / Tacna 5.
+--     Supervisora 2: Arequipa 8  / Tacna 7.
+--   Meta sugerida: Arequipa 18, Tacna 12.
+-- - Meta conjunta configurada por el jefe: Arequipa 20 (mes actual).
+--   Tacna sin configurar → meta efectiva = sugerida (12).
+-- - 3 visitas REALIZADAS (2 en Arequipa, 1 en Tacna).
 -- - 1 visita REPROGRAMADA.
 -- - 1 visita CANCELADA.
 -- - 1 visita NO_REALIZADA.

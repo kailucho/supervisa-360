@@ -10,13 +10,24 @@ describe('translateError', () => {
     expect(result.code).toBe('ACTIVE_VISIT_CONFLICT');
   });
 
-  it('detecta meta duplicada por el nombre de la restricción', () => {
+  it('detecta meta personal duplicada por el nombre de la restricción (por sede)', () => {
     const result = translateError({
       code: '23505',
       message:
-        'duplicate key value violates unique constraint "monthly_goals_supervisor_period_unique"',
+        'duplicate key value violates unique constraint "monthly_goals_supervisor_region_period_unique"',
     });
     expect(result.code).toBe('DUPLICATE_GOAL');
+    expect(result.message).toContain('sede');
+  });
+
+  it('detecta meta conjunta duplicada por el nombre de la restricción', () => {
+    const result = translateError({
+      code: '23505',
+      message:
+        'duplicate key value violates unique constraint "regional_monthly_goals_region_period_unique"',
+    });
+    expect(result.code).toBe('DUPLICATE_GOAL');
+    expect(result.message).toContain('conjunta');
   });
 
   it('detecta resultado incompleto (visits_result_completeness)', () => {

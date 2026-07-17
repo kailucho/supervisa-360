@@ -62,18 +62,22 @@ ser un `INSERT`, no una migración de tipo.
 
 ### `profiles`
 
-Una fila por supervisora. Su `id` es el `id` de Supabase Auth.
+Una fila por usuaria/o de la aplicación (supervisoras y jefatura). Su `id` es el `id` de
+Supabase Auth.
 
-| Columna      | Tipo                                 | Notas                                          |
-| ------------ | ------------------------------------ | ---------------------------------------------- |
-| `id`         | `uuid` PK                            | `REFERENCES auth.users(id) ON DELETE RESTRICT` |
-| `full_name`  | `text NOT NULL`                      | `CHECK (length(btrim(full_name)) > 0)`         |
-| `is_active`  | `boolean NOT NULL DEFAULT true`      | ver "Ciclo de vida de una supervisora"         |
-| `created_at` | `timestamptz NOT NULL DEFAULT now()` |                                                |
-| `updated_at` | `timestamptz NOT NULL DEFAULT now()` |                                                |
+| Columna      | Tipo                                     | Notas                                          |
+| ------------ | ---------------------------------------- | ---------------------------------------------- |
+| `id`         | `uuid` PK                                | `REFERENCES auth.users(id) ON DELETE RESTRICT` |
+| `full_name`  | `text NOT NULL`                          | `CHECK (length(btrim(full_name)) > 0)`         |
+| `is_active`  | `boolean NOT NULL DEFAULT true`          | ver "Ciclo de vida de una supervisora"         |
+| `role`       | `app_role NOT NULL DEFAULT 'SUPERVISOR'` | `SUPERVISOR` \| `SUPERVISION_MANAGER` (RN-28)  |
+| `created_at` | `timestamptz NOT NULL DEFAULT now()`     |                                                |
+| `updated_at` | `timestamptz NOT NULL DEFAULT now()`     |                                                |
 
-Sin columna de rol: ambas supervisoras son equivalentes en el MVP. Las filas se crean
-manualmente junto con las cuentas de Auth (HU-05).
+Las filas se crean manualmente junto con las cuentas de Auth (HU-05). Todas las
+supervisoras son equivalentes entre sí; el rol solo distingue supervisoras de la
+jefatura (ver "Rol de jefatura, metas por sede y auditoría" al final de este
+documento).
 
 #### Ciclo de vida de una supervisora
 
@@ -199,23 +203,28 @@ fija `updated_at`. El cliente no puede escribirlas directamente: no tienen `GRAN
 | --------------- | ---------------------------------------------------------- | ------------------------------------ |
 | `id`            | `uuid` PK                                                  |                                      |
 | `supervisor_id` | `uuid NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT` |                                      |
+| `region_id`     | `uuid NOT NULL REFERENCES regions(id) ON DELETE RESTRICT`  | sede de la meta (RN-29)              |
 | `year`          | `smallint NOT NULL`                                        | `CHECK (year BETWEEN 2025 AND 2100)` |
 | `month`         | `smallint NOT NULL`                                        | `CHECK (month BETWEEN 1 AND 12)`     |
 | `target_visits` | `smallint NOT NULL`                                        | `CHECK (target_visits >= 0)` (RN-23) |
 | `created_at`    | `timestamptz NOT NULL DEFAULT now()`                       |                                      |
 | `updated_at`    | `timestamptz NOT NULL DEFAULT now()`                       |                                      |
-|                 | `UNIQUE (supervisor_id, year, month)`                      | una sola meta por supervisora y mes  |
+|                 | `UNIQUE (supervisor_id, region_id, year, month)`           | una meta por supervisora, sede y mes |
+
+**La meta es por sede** (RN-29): una supervisora puede trabajar en varias sedes y tener
+una meta distinta en cada una el mismo mes. La unicidad incluye `region_id`.
 
 **`target_visits` admite cero.** Un mes de vacaciones, licencia o cambio de puesto es una
 meta legítima de 0 visitas, y forzar un mínimo de 1 obligaría a inventar un dato falso o a
-no crear la fila. Esto último importa más de lo que parece: la vista `v_monthly_progress`
-(sección 11) usa `monthly_goals` como **tabla base**, así que una supervisora sin fila de
-meta **no aparece en el panel de ese mes**. Por eso debe existir una fila por cada
-supervisora activa y cada mes, **incluso cuando la meta sea cero**. Lo que el `CHECK`
-prohíbe es un valor **negativo**, que nunca tiene sentido.
+no crear la fila. Lo que el `CHECK` prohíbe es un valor **negativo**, que nunca tiene
+sentido. A diferencia de la vista original, las vistas actuales
+(`v_individual_monthly_progress`) construyen sus claves con la **unión** de metas y
+visitas, así que una visita realizada aparece en el reporte aunque no exista fila de meta
+para esa supervisora y sede.
 
-La **meta conjunta no se almacena** (RN-24): se calcula como `SUM(target_visits)` del mes en
-la vista. Una meta de 0 suma 0 y no distorsiona la meta conjunta.
+La **meta conjunta sí se almacena ahora**, por sede, en `regional_monthly_goals`
+(RN-30): la suma de metas personales es la _meta sugerida_ y la fila del jefe, si existe,
+es la _meta definida_; la efectiva es `COALESCE(definida, sugerida)`.
 
 ## 4. Relaciones y política de borrado
 
@@ -1048,3 +1057,175 @@ resultado ✓ · permisos por columna en `visits` ✓ · permisos por columna en
 `performed_date` ✓ · activas por `scheduled_date` ✓ · sin borrado físico ✓ · trazabilidad de autoría del
 resultado con `performed_by`/`result_updated_at` ✓ · creación de `monthly_goals` automatizada con `pg_cron` y
 trigger de activación en `profiles` ✓ · listo para migración ✓.
+
+---
+
+## 14. Rol de jefatura, metas por sede y auditoría
+
+Añadido por la migración `20260716120000_add_supervision_manager_role.sql`, que **no
+modifica** la migración inicial: todo se agrega o se reescribe encima. Implementa
+RN-28..RN-32.
+
+### 14.1 Rol de aplicación
+
+```sql
+create type public.app_role as enum ('SUPERVISOR', 'SUPERVISION_MANAGER');
+alter table public.profiles add column role public.app_role not null default 'SUPERVISOR';
+```
+
+El default hace la migración segura para las filas existentes: toda cuenta previa sigue
+siendo supervisora. Para promover a jefatura:
+
+```sql
+update public.profiles set role = 'SUPERVISION_MANAGER' where id = '<uuid>';
+```
+
+### 14.2 `public.current_app_role()` — el predicado único de las políticas
+
+```sql
+create or replace function public.current_app_role()
+returns public.app_role
+language sql stable security definer set search_path = ''
+as $$
+  select p.role from public.profiles p
+  where p.id = auth.uid() and p.is_active
+$$;
+```
+
+- **`security definer`**: lee `profiles` sin depender de la RLS de esa tabla.
+- **Vive en `public`, no en `private`**: las políticas se evalúan con los privilegios del
+  invocador, y `authenticated` no tiene `USAGE` sobre `private`. Solo revela el rol del
+  propio usuario autenticado, así que exponerla como RPC es inocuo.
+- **Devuelve `NULL` si el perfil no existe o está inactivo**, de modo que un solo
+  predicado cubre "perfil activo" **y** rol: `(select public.current_app_role()) is not null`
+  sustituye al viejo `EXISTS (... is_active ...)`, y `= 'SUPERVISOR'` restringe escrituras.
+- **`stable` + patrón `(select fn())`**: PostgreSQL lo evalúa como InitPlan una vez por
+  sentencia, no una vez por fila.
+
+### 14.3 Matriz de políticas resultante
+
+| Tabla                    | SELECT        | INSERT                | UPDATE                | DELETE                |
+| ------------------------ | ------------- | --------------------- | --------------------- | --------------------- |
+| `profiles`               | autenticado   | ✗                     | ✗                     | ✗                     |
+| `regions`                | perfil activo | ✗                     | ✗                     | ✗                     |
+| `advisors`               | perfil activo | ✗                     | ✗                     | ✗                     |
+| `associations`           | perfil activo | ✗                     | `SUPERVISOR`          | ✗                     |
+| `visits`                 | perfil activo | `SUPERVISOR` y propia | `SUPERVISOR`          | ✗                     |
+| `monthly_goals`          | perfil activo | `SUPERVISOR` y propia | `SUPERVISOR` y propia | ✗                     |
+| `regional_monthly_goals` | perfil activo | `SUPERVISION_MANAGER` | `SUPERVISION_MANAGER` | `SUPERVISION_MANAGER` |
+
+El jefe **lee todo y no escribe nada** salvo `regional_monthly_goals`. Los `GRANT` por
+columna de la migración inicial siguen vigentes y se suman a estas políticas: la
+restricción efectiva es la intersección de ambas capas. La migración añade
+`GRANT INSERT (region_id) ON monthly_goals` (sin él, el insert fallaría con 42501 pese a
+pasar la política).
+
+> **Efecto colateral documentado.** `visits_before_insert()` hace
+> `select ... from associations ... for share`. PostgreSQL aplica a las lecturas con
+> bloqueo también la política de **UPDATE** de la tabla leída. Como `associations_update`
+> es ahora exclusiva de `SUPERVISOR`, un intento de inserción por parte del jefe falla en
+> el trigger (`P0001`, "No existe la asociación") antes de llegar al `WITH CHECK` de
+> `visits` (`42501`). La inserción queda denegada por ambas vías; solo cambia el código de
+> error. No afecta a la supervisora, que sí pasa la política de UPDATE.
+
+### 14.4 `regional_monthly_goals`
+
+| Columna         | Tipo                                                      | Notas                                 |
+| --------------- | --------------------------------------------------------- | ------------------------------------- |
+| `id`            | `uuid` PK                                                 |                                       |
+| `region_id`     | `uuid NOT NULL REFERENCES regions(id) ON DELETE RESTRICT` |                                       |
+| `year`          | `smallint NOT NULL`                                       | `CHECK (year BETWEEN 2025 AND 2100)`  |
+| `month`         | `smallint NOT NULL`                                       | `CHECK (month BETWEEN 1 AND 12)`      |
+| `target_visits` | `smallint NOT NULL`                                       | `CHECK (target_visits >= 0)`          |
+| `created_by`    | `uuid NULL REFERENCES profiles(id)`                       | lo fija el trigger desde `auth.uid()` |
+| `updated_by`    | `uuid NULL REFERENCES profiles(id)`                       | lo fija el trigger desde `auth.uid()` |
+| `created_at`    | `timestamptz NOT NULL DEFAULT now()`                      |                                       |
+| `updated_at`    | `timestamptz NOT NULL DEFAULT now()`                      |                                       |
+|                 | `UNIQUE (region_id, year, month)`                         | una sola meta conjunta por sede y mes |
+
+`created_by`/`updated_by` los administra `regional_monthly_goals_set_actor()` (BEFORE
+INSERT OR UPDATE) y están **excluidos de los GRANT por columna**: el cliente nunca puede
+suplantar al autor. Son nullable para permitir escrituras de mantenimiento sin JWT (seed,
+`service_role`).
+
+### 14.5 Vistas de progreso
+
+`v_monthly_progress` se elimina y la reemplazan dos vistas, ambas con
+`security_invoker = true` (la RLS de las tablas base aplica al usuario que consulta):
+
+**`v_individual_monthly_progress`** — `(region_id, region_name, supervisor_id,
+supervisor_name, year, month, individual_target, individual_done, individual_active,
+has_goal)`.
+
+- La sede de una visita es la de **su asociación** (`visits → associations.region_id`),
+  nunca una sede del perfil (RN-31).
+- Realizadas por mes de `performed_date` con estado `REALIZADA`; activas por mes de
+  `scheduled_date` con estado `PROGRAMADA`/`REPROGRAMADA`.
+- Las claves salen de la **UNIÓN** de `monthly_goals` y el agregado de visitas: una visita
+  realizada nunca desaparece del reporte por falta de meta (`has_goal = false`,
+  `individual_target = 0`).
+
+**`v_joint_monthly_progress`** — `(region_id, region_name, year, month,
+suggested_joint_target, configured_joint_target, effective_joint_target, joint_done,
+joint_active, is_configured)`.
+
+- `suggested_joint_target` = suma de metas personales de la sede.
+- `effective_joint_target` = `COALESCE(configurada, sugerida)` (RN-30).
+- `is_configured` distingue "Meta definida" de "Meta sugerida" en la interfaz.
+- Consultar la vista **no crea** filas de meta conjunta; solo se crean cuando el jefe
+  confirma el valor.
+
+Ambas se consultan de una sola vez por pantalla (una fila por sede), evitando N+1 desde
+React.
+
+### 14.6 Automatización mensual
+
+`private.create_monthly_goals_for_active_supervisors(p_year, p_month)` se reemplaza con
+`create or replace` **manteniendo la firma**, de modo que el job `pg_cron`
+`create-monthly-goals` sigue siendo válido sin reprogramarlo. Ahora inserta una meta 0 por
+cada combinación de **supervisora activa × sede activa**, filtrando `role = 'SUPERVISOR'`
+(el jefe no tiene metas personales).
+
+### 14.7 Auditoría (`private.audit_logs`)
+
+```sql
+create table private.audit_logs (
+  id bigint generated always as identity primary key,
+  table_name text not null,
+  record_id  uuid not null,
+  operation  text not null check (operation in ('INSERT','UPDATE','DELETE')),
+  user_id    uuid null,
+  old_value  jsonb null,
+  new_value  jsonb null,
+  created_at timestamptz not null default now()
+);
+```
+
+- Un único trigger genérico `private.log_audit_event()` (`security definer`, `TG_OP` /
+  `TG_TABLE_NAME`, `to_jsonb(old/new)`) montado AFTER INSERT OR UPDATE OR DELETE sobre
+  `profiles`, `associations`, `visits`, `monthly_goals` y `regional_monthly_goals`.
+- `security definer` es lo que permite que un `authenticated` sin privilegios sobre
+  `private` dispare la inserción en la bitácora.
+- Sin acceso para `anon`/`authenticated` y **sin pantalla en la aplicación** (RN-32): se
+  consulta desde Studio o psql.
+- Solo serializa filas de tablas `public`; **nunca** contenido de `auth.users` ni
+  contraseñas.
+- `user_id` queda `NULL` cuando el cambio ocurre sin JWT (seed, mantenimiento), lo cual es
+  esperado y esperable.
+
+### 14.8 Migración de metas antiguas
+
+En el entorno local la migración **borra** las filas de `monthly_goals` antes de añadir
+`region_id NOT NULL`, y el seed las recrea por sede (decisión registrada: solo había datos
+de desarrollo). En un entorno con datos reales el `DELETE` debe sustituirse por un
+backfill manual: añadir `region_id` como nullable, asignar la sede correcta a cada meta
+histórica con conocimiento del negocio (**nunca** repartir automáticamente una meta
+general entre sedes ni asignar una sede arbitraria) y recién entonces aplicar el
+`NOT NULL` en una migración posterior.
+
+### 14.9 Verificación
+
+`supabase/snippets/verify-rls-roles.sql` ejecuta 24 comprobaciones sobre la base local
+(qué puede y qué no puede cada rol, unicidad de metas por sede, no regresión del flujo
+operativo de la supervisora, lectura de vistas y registro de auditoría). Ver
+[docs/development/local-supabase.md](../development/local-supabase.md) §10b.

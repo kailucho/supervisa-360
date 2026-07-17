@@ -64,10 +64,16 @@ export function translateError(error: unknown): AppError {
           message: 'Esta asociación ya tiene una visita activa programada.',
         };
       }
-      if (haystack.includes('monthly_goals_supervisor_period_unique')) {
+      if (haystack.includes('monthly_goals_supervisor_region_period_unique')) {
         return {
           code: 'DUPLICATE_GOAL',
-          message: 'Ya existe una meta para esa supervisora en ese mes y año.',
+          message: 'Ya existe una meta para esa supervisora en esa sede, mes y año.',
+        };
+      }
+      if (haystack.includes('regional_monthly_goals_region_period_unique')) {
+        return {
+          code: 'DUPLICATE_GOAL',
+          message: 'Ya existe una meta conjunta para esa sede en ese mes y año.',
         };
       }
       return { code: 'UNKNOWN', message: 'Ese valor ya existe y debe ser único.' };

@@ -16,3 +16,16 @@ export async function fetchActiveProfiles(): Promise<ProfileRow[]> {
   if (error) throw error;
   return data ?? [];
 }
+
+// Solo perfiles operativos: el Jefe de Supervisión nunca aparece en los
+// selectores de supervisora (agenda, filtros).
+export async function fetchActiveSupervisors(): Promise<ProfileRow[]> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('is_active', true)
+    .eq('role', 'SUPERVISOR')
+    .order('full_name');
+  if (error) throw error;
+  return data ?? [];
+}

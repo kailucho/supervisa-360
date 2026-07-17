@@ -3,9 +3,17 @@
 Este documento lista explícitamente lo que el MVP **no** incluirá, el motivo de la
 exclusión y si se considera una fase futura posible.
 
+> **Actualización:** el _usuario de jefatura_ ya **no** está fuera de alcance. Se
+> implementó como rol `SUPERVISION_MANAGER` (RN-28..RN-32): consulta global, metas
+> conjuntas por sede y metas personales por sede. Ver
+> [business-rules.md](business-rules.md) §9. Lo que sigue excluido de ese rol es una
+> **pantalla de auditoría** (la auditoría existe solo en base de datos) y la
+> administración de usuarios desde la app.
+
 | Función excluida                                             | Motivo de exclusión                                                                                                                                                                                                            | ¿Fase futura?                                                                    |
 | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------- |
-| Usuario de jefatura                                          | El MVP atiende únicamente a las 2 supervisoras; jefatura no tiene un flujo definido aún (qué ve, qué permisos tiene).                                                                                                          | Sí — probable v2, una vez validado el uso por las supervisoras.                  |
+| Pantalla de auditoría                                        | La bitácora (`private.audit_logs`) se consulta desde Supabase Studio/psql; exponerla en la app no aporta al flujo de coordinación y ampliaría la superficie de datos sensibles.                                                | Posible, si jefatura necesita revisar cambios sin acceso a Studio.               |
+| Administración de usuarios desde la app                      | Las cuentas y los roles se gestionan manualmente en Supabase Auth + `profiles`; son 3 usuarios y cambian muy rara vez.                                                                                                         | Poco probable mientras el número de usuarios sea tan bajo.                       |
 | Acceso para asesores                                         | Los asesores no participan como usuarios de la app; solo son referenciados como dato de la asociación/visita.                                                                                                                  | No previsto en el corto plazo; requeriría definir qué verían y con qué permisos. |
 | Selección formal de asesores por mes                         | No se definió un proceso de asignación mensual; solo se registra el asesor actual de cada asociación.                                                                                                                          | Posible, si ADRA formaliza ese proceso.                                          |
 | Retroalimentación al asesor dentro de la app                 | No hay usuario asesor ni flujo de comunicación definido.                                                                                                                                                                       | Depende de si se habilita acceso de asesores.                                    |

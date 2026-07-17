@@ -25,9 +25,12 @@ comentario general por visita.
 
 ## Usuarios
 
-- 2 supervisoras (únicos usuarios del MVP), con permisos idénticos entre sí.
+- 2 supervisoras (rol `SUPERVISOR`), con permisos idénticos entre sí.
+- 1 Jefe de Supervisión (rol `SUPERVISION_MANAGER`), incorporado después del MVP
+  inicial: acceso global de **solo consulta** más la definición de la meta conjunta
+  mensual por sede (RN-28..RN-31).
 - Sin registro público. Las cuentas se crean manualmente en Supabase Auth.
-- Fuera de este MVP: usuario de jefatura, acceso de asesores.
+- Fuera de este MVP: acceso de asesores.
 
 ## Alcance
 
@@ -42,12 +45,16 @@ Incluye:
 - registro de resultado de visita (fecha real, horas opcionales, puntuación 0-5,
   comentario general);
 - historial de visitas por asociación;
-- metas mensuales individuales y meta conjunta, con panel de avance.
+- metas mensuales individuales **por sede** y meta conjunta por sede, con panel de
+  avance;
+- rol de jefatura: panel por sede, detalle de sede y definición de la meta conjunta
+  (todo lo demás, solo consulta);
+- auditoría de cambios a nivel de base de datos (sin pantalla en la app).
 
-No incluye (detalle en [out-of-scope.md](out-of-scope.md)): jefatura, acceso de
-asesores, evaluación por aspectos, fotos/archivos, notificaciones, exportaciones,
-gráficos de evolución, integración con la herramienta oficial de ADRA, creación o
-eliminación de asociaciones/asesores desde la app, entre otros.
+No incluye (detalle en [out-of-scope.md](out-of-scope.md)): acceso de asesores,
+evaluación por aspectos, fotos/archivos, notificaciones, exportaciones, gráficos de
+evolución, integración con la herramienta oficial de ADRA, creación o eliminación de
+asociaciones/asesores desde la app, pantalla de auditoría, entre otros.
 
 ## Funcionalidades
 

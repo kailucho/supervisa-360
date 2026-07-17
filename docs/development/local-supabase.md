@@ -125,19 +125,50 @@ Con Supabase local corriendo, abre la URL `STUDIO_URL` que imprime
 `supabase status` (por defecto `http://127.0.0.1:54323`). Desde ahí puedes
 inspeccionar tablas, ejecutar SQL, y gestionar usuarios de Auth manualmente.
 
-## 10. Crear manualmente las dos supervisoras de prueba
+## 10. Cuentas de prueba y creación manual de usuarios
 
-El seed (`supabase/seed.sql`) ya crea automáticamente los dos usuarios de Auth y
-sus perfiles (`supervisora1@supervisa360.local` / `supervisora2@supervisa360.local`,
-contraseña `Supervisa360!`) cada vez que corres `npm run db:reset`. Este paso
-manual solo es necesario si por alguna razón necesitas crear un usuario adicional
-sin pasar por el seed:
+El seed (`supabase/seed.sql`) ya crea automáticamente tres usuarios de Auth y sus
+perfiles cada vez que corres `npm run db:reset` (contraseña `Supervisa360!`):
+
+- `supervisora1@supervisa360.local` — rol `SUPERVISOR`.
+- `supervisora2@supervisa360.local` — rol `SUPERVISOR`.
+- `jefe@supervisa360.local` — rol `SUPERVISION_MANAGER` (Jefe de Supervisión).
+
+Este paso manual solo es necesario si por alguna razón necesitas crear un usuario
+adicional sin pasar por el seed:
 
 1. Abre Supabase Studio → **Authentication** → **Users** → **Add user**.
 2. Crea el usuario con email/contraseña y márcalo como "Auto Confirm User".
 3. Copia el `UUID` generado.
-4. En **Table Editor** → `public.profiles`, inserta una fila con ese mismo `id`
-   y el `full_name` correspondiente (o hazlo desde el SQL Editor).
+4. En **Table Editor** → `public.profiles`, inserta una fila con ese mismo `id`,
+   el `full_name` correspondiente y el `role` deseado (`SUPERVISOR` o
+   `SUPERVISION_MANAGER`; si se omite, queda `SUPERVISOR`).
+
+## 10b. Verificar RLS por rol y la auditoría
+
+Después de `npm run db:reset`, puedes correr la verificación completa de las
+políticas por rol (el jefe no escribe visitas/asociaciones/metas personales, la
+supervisora no escribe metas conjuntas ni ajenas, unicidad de metas por sede,
+lectura de vistas y registro de auditoría):
+
+```sh
+docker exec -i supabase_db_supervision-app psql -U postgres -d postgres \
+  -f - < supabase/snippets/verify-rls-roles.sql
+```
+
+Cada check imprime `PASS: ...`; si algo falla, el script se detiene con `FAIL`.
+Todos los cambios se hacen dentro de transacciones con `rollback`, así que la
+base queda intacta.
+
+La bitácora de auditoría vive en `private.audit_logs` (sin acceso para
+`anon`/`authenticated`). Para inspeccionarla desde Studio (SQL Editor) o psql:
+
+```sql
+select table_name, operation, user_id, created_at
+from private.audit_logs
+order by created_at desc
+limit 50;
+```
 
 ## 11. Comandos que nunca deben ejecutarse accidentalmente contra producción
 

@@ -1,4 +1,4 @@
-import type { MonthlyProgressRow } from '@/shared/types/domain';
+import type { IndividualProgressRow, JointProgressRow } from '@/shared/types/domain';
 
 export interface ProgressSummary {
   target: number;
@@ -17,23 +17,28 @@ export function summarizeProgress(target: number, done: number, active: number):
   };
 }
 
-export function summarizeIndividualProgress(row: MonthlyProgressRow | null): ProgressSummary {
+/**
+ * Suma las filas de v_individual_monthly_progress (una por sede) de una misma
+ * supervisora. Las visitas cuentan aunque la fila no tenga meta (has_goal=false).
+ */
+export function sumIndividualProgress(rows: IndividualProgressRow[]): ProgressSummary {
   return summarizeProgress(
-    row?.individual_target ?? 0,
-    row?.individual_done ?? 0,
-    row?.individual_active ?? 0,
+    rows.reduce((acc, row) => acc + (row.individual_target ?? 0), 0),
+    rows.reduce((acc, row) => acc + (row.individual_done ?? 0), 0),
+    rows.reduce((acc, row) => acc + (row.individual_active ?? 0), 0),
   );
 }
 
-// RN-24: la meta conjunta es la suma de las metas individuales, no un valor guardado aparte.
-// Todas las filas de v_monthly_progress para un mismo (year, month) ya traen el mismo
-// joint_* (window function), así que basta con leer la primera fila disponible.
-export function summarizeJointProgress(rows: MonthlyProgressRow[]): ProgressSummary {
-  const [first] = rows;
+/**
+ * RN-30: cada fila de v_joint_monthly_progress ya trae la meta efectiva de su
+ * sede (configurada por el jefe si existe; sugerida en caso contrario). La suma
+ * entre sedes usa siempre la efectiva.
+ */
+export function sumJointProgress(rows: JointProgressRow[]): ProgressSummary {
   return summarizeProgress(
-    first?.joint_target ?? 0,
-    first?.joint_done ?? 0,
-    first?.joint_active ?? 0,
+    rows.reduce((acc, row) => acc + (row.effective_joint_target ?? 0), 0),
+    rows.reduce((acc, row) => acc + (row.joint_done ?? 0), 0),
+    rows.reduce((acc, row) => acc + (row.joint_active ?? 0), 0),
   );
 }
 

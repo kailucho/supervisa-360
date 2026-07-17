@@ -56,28 +56,66 @@ Configuration`): configura la URL real de producción en Vercel (por
    redirecciones (recuperación futura, etc.) no quede apuntando a
    `localhost`.
 
-## 5. Crear las dos cuentas reales de supervisoras
+## 5. Crear las cuentas reales (supervisoras y jefatura)
 
 Igual que en local (ver [`local-supabase.md`](local-supabase.md) §10), pero
-en el proyecto de Supabase de producción:
+en el proyecto de Supabase de producción. No existe registro público: las
+cuentas se crean siempre a mano.
+
+### 5.1 Supervisoras
 
 1. **Authentication → Users → Add user**, con el correo y contraseña reales
    de cada supervisora. Márcalo como "Auto Confirm User" (o confirma por
    correo si se habilitó `enable_confirmations`).
 2. Copia el `UUID` de cada usuario creado.
-3. Inserta su fila en `public.profiles` (SQL Editor de producción):
+3. Inserta su fila en `public.profiles` (SQL Editor de producción). `role`
+   puede omitirse: su valor por defecto es `SUPERVISOR`.
 
    ```sql
-   insert into public.profiles (id, full_name, is_active)
-   values ('<uuid-de-auth>', 'Nombre completo', true);
+   insert into public.profiles (id, full_name, is_active, role)
+   values ('<uuid-de-auth>', 'Nombre completo', true, 'SUPERVISOR');
    ```
 
 4. Repite para la segunda supervisora.
-5. Crea sus metas del mes en curso:
+5. Crea sus metas del mes en curso (una por sede activa, RN-29):
 
    ```sql
    select private.create_monthly_goals_for_active_supervisors();
    ```
+
+### 5.2 Jefe de Supervisión (RN-28)
+
+Mismos pasos 1 y 2, y luego la fila de perfil **con el rol explícito**:
+
+```sql
+insert into public.profiles (id, full_name, is_active, role)
+values ('<uuid-de-auth>', 'Nombre del jefe', true, 'SUPERVISION_MANAGER');
+```
+
+Si la cuenta ya existe como supervisora y quieres promoverla:
+
+```sql
+update public.profiles set role = 'SUPERVISION_MANAGER' where id = '<uuid>';
+```
+
+Notas importantes:
+
+- **No ejecutes `create_monthly_goals_for_active_supervisors()` pensando en el
+  jefe**: la función filtra por `role = 'SUPERVISOR'` a propósito. El jefe no
+  tiene metas personales; define metas conjuntas por sede desde `/metas`.
+- El rol solo puede asignarse desde el SQL Editor o Studio: `profiles` no
+  admite escrituras desde la aplicación (no hay política de INSERT/UPDATE).
+- Al iniciar sesión, el jefe entra directamente a `/jefatura`.
+- Para revertir a supervisora: el mismo `update` con `'SUPERVISOR'`.
+
+### 5.3 Verificar los roles asignados
+
+```sql
+select p.id, p.full_name, p.role, p.is_active, u.email
+from public.profiles p
+join auth.users u on u.id = p.id
+order by p.role, p.full_name;
+```
 
 ## 6. Migraciones en producción
 

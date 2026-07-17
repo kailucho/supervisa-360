@@ -82,8 +82,22 @@ export const visitResultSchema = z
 export type VisitResultFormValues = z.output<typeof visitResultSchema>;
 export type VisitResultFormInput = z.input<typeof visitResultSchema>;
 
-export const monthlyGoalSchema = z.object({
+// RN-29: meta personal por sede, año y mes (entera, 0 permitido).
+export const personalGoalSchema = z.object({
+  regionId: z.string().uuid('Selecciona una sede válida.'),
+  year: z.number().int().min(2025, 'Año inválido.').max(2100, 'Año inválido.'),
+  month: z.number().int().min(1, 'Mes inválido.').max(12, 'Mes inválido.'),
   targetVisits: targetVisitsSchema,
 });
-export type MonthlyGoalFormValues = z.output<typeof monthlyGoalSchema>;
-export type MonthlyGoalFormInput = z.input<typeof monthlyGoalSchema>;
+export type PersonalGoalFormValues = z.output<typeof personalGoalSchema>;
+export type PersonalGoalFormInput = z.input<typeof personalGoalSchema>;
+
+// RN-30: meta conjunta por sede definida por el Jefe de Supervisión.
+export const regionalGoalSchema = z.object({
+  regionId: z.string().uuid('Selecciona una sede válida.'),
+  year: z.number().int().min(2025, 'Año inválido.').max(2100, 'Año inválido.'),
+  month: z.number().int().min(1, 'Mes inválido.').max(12, 'Mes inválido.'),
+  targetVisits: targetVisitsSchema,
+});
+export type RegionalGoalFormValues = z.output<typeof regionalGoalSchema>;
+export type RegionalGoalFormInput = z.input<typeof regionalGoalSchema>;
