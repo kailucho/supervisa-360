@@ -1,6 +1,6 @@
 # Supervisa 360
 
-Aplicación web (SPA) para que las dos supervisoras de ADRA en Arequipa y Tacna coordinen las
+Aplicación web (SPA) para que las dos supervisoras en Arequipa y Tacna coordinen las
 visitas de supervisión a ~330 asociaciones: agenda compartida, programación/reprogramación/
 cancelación de visitas con bloqueo de duplicidad, registro de resultado (puntuación y
 comentario), historial por asociación, y metas mensuales individuales y conjuntas.
